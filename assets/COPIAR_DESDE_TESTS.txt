@@ -1,0 +1,13 @@
+Copiar desde el repo "Tests" (A-Frame OK) a la raiz de RepoFusion:
+
+  Plato_01.glb ... Plato_15.glb
+  margot_targets.mind
+  cinema_lobby_B-N.hdr
+  Loading screen.png
+
+Copiar desde RepoClean / Repositorio 8th Wall:
+
+  assets/Plato_05.glb  (modelo de prueba del bundle 8th Wall)
+  image-targets/*.png  (marker_luminance.png, etc.)
+
+Copiar carpeta HDR/ si la usas (opcional por ahora).
