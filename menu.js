@@ -1,6 +1,6 @@
-// Menu Handmade Unified v1.16
+// Menu Handmade Unified v1.17
 // Generated as part of the AR refactor.
-// version Handmade Unified 1.16
+// version Handmade Unified 1.17
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -138,47 +138,17 @@ function startAR(){
 }
 
 function stopAR(){
-  // Muerte absoluta del contenedor AR y limpieza de la cámara
-  const container = document.getElementById("arContainer");
-  container.innerHTML = ""; 
-  container.style.display = "none";
-  
-  // Destrucción total de cualquier rastro del script AR
-  const arScript = document.getElementById("arModuleScript");
-  if (arScript) arScript.remove(); 
-  
-  // Limpiamos los objetos globales de AR
-  window.AR = null; 
-  window.XR8 = null;
-
-  // Reset visual forzado al estado inicial
-  document.body.style.background = "#1f1a17";
-  document.getElementById("mvContainer").style.display = "block";
-  document.getElementById("startScreen").style.display = "flex";
-  
-  const envToggle = document.getElementById("envToggle");
-  if (envToggle) envToggle.style.display = "none";
-  
-  // Recreamos el menú desde cero
-  createMV();
-  
-  history.replaceState({mode:"menu", current}, "");
+  // Muerte absoluta: guardamos modelo y recargamos la página totalmente
+  sessionStorage.setItem("modelo_actual", current);
+  window.location.reload(); 
 }
 
-window.addEventListener("popstate", (event) => {
-  if (!event.state || event.state.mode !== "ar") {
-    stopAR();
-  }
-});
-
-window.toggleEnv = function() {
-  if (window.AR && typeof window.AR.toggleEnv === "function") {
-    window.AR.toggleEnv();
-  }
-};
-
 window.addEventListener("DOMContentLoaded", () => {
-  history.replaceState({mode:"menu", current}, "");
+  const guardado = sessionStorage.getItem("modelo_actual");
+  if (guardado !== null) {
+      current = parseInt(guardado);
+      sessionStorage.removeItem("modelo_actual");
+  }
   document.getElementById("envToggle").style.display = "none";
   createMV();
 });
