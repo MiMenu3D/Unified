@@ -1,6 +1,6 @@
-// AR module Handmade Unified v1.15
+// AR module Handmade Unified v1.14
 // Generated as part of the AR refactor.
-// version Handmade Unified v1.15
+// version Handmade Unified v1.14
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -208,29 +208,21 @@ function startAR(modelSrc) {
 }
 
 function stopAR() {
-  // 1. Matamos los bucles de renderizado A-Frame ANTES de nada
-  if (window.AFRAME) {
-    const scene = document.querySelector("a-scene");
-    if (scene) scene.pause();
-  }
-
-  // 2. Avisamos al motor AR
+  // 1. Lo primero es avisar al motor que vamos a limpiar, SIN forzar el cierre de la cámara aún
   if (window.XR8) {
     try { window.XR8.clearCameraPipelineModules(); } catch(e) {}
   }
 
-  // 3. Destruimos la escena
+  // 2. Destruimos la escena de A-Frame (esto para el renderizado)
   destroyARScene();
 
-  // 4. Limpiamos cualquier rastro global de A-Frame o XR8
-  window.XR8 = null;
-
-  // 5. Solo cuando A-Frame ha muerto, limpiamos los restos físicos (canvas, video, scripts)
+  // 3. Solo cuando A-Frame ha muerto, limpiamos los restos físicos (canvas, video, scripts)
   document.querySelectorAll("canvas").forEach(c => c.remove());
   
-  // 6. Limpiamos objetos y variables
+  // 4. Ahora sí, limpiamos los objetos y variables
   xrLoadPromise = null;
   envMode = "hdr";
+  window.XR8 = null;
 
   const xrScript = document.getElementById("xrScript");
   if (xrScript) xrScript.remove();
