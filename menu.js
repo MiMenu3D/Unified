@@ -1,6 +1,6 @@
-// Menu Handmade Unified v1.08
+// Menu Handmade Unified v1.16
 // Generated as part of the AR refactor.
-// version Handmade Unified 1.08
+// version Handmade Unified 1.16
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -138,27 +138,29 @@ function startAR(){
 }
 
 function stopAR(){
-  if (window.AR && typeof window.AR.stopAR === "function") {
-    window.AR.stopAR();
-  }
-
-    // Limpieza agresiva
+  // Muerte absoluta del contenedor AR y limpieza de la cámara
+  const container = document.getElementById("arContainer");
+  container.innerHTML = ""; 
+  container.style.display = "none";
+  
+  // Destrucción total de cualquier rastro del script AR
+  const arScript = document.getElementById("arModuleScript");
+  if (arScript) arScript.remove(); 
+  
+  // Limpiamos los objetos globales de AR
   window.AR = null; 
+  window.XR8 = null;
 
-  document.getElementById("lightDebug").style.display = "none";
-  document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
-  const bridgePanel = document.getElementById("bridgeDebugPanel");
-  if (bridgePanel) bridgePanel.remove();
-  
-  document.getElementById("arContainer").style.display = "none";
-  const envToggle = document.getElementById("envToggle");
-  if (envToggle) envToggle.style.display = "none";
-  
+  // Reset visual forzado al estado inicial
   document.body.style.background = "#1f1a17";
   document.getElementById("mvContainer").style.display = "block";
   document.getElementById("startScreen").style.display = "flex";
   
-    createMV();
+  const envToggle = document.getElementById("envToggle");
+  if (envToggle) envToggle.style.display = "none";
+  
+  // Recreamos el menú desde cero
+  createMV();
   
   history.replaceState({mode:"menu", current}, "");
 }
