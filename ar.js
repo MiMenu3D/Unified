@@ -1,6 +1,6 @@
-// AR module Handmade Unified 1.06
+// AR module Handmade Unified 1.08
 // Generated as part of the AR refactor.
-// version Handmade Unified 1.06
+// version Handmade Unified 1.08
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -222,6 +222,8 @@ function stopAR() {
   }
 
   // 3. Destruimos la escena A-Frame
+  const sceneEl = document.querySelector("a-scene");
+  if (sceneEl && sceneEl.renderer) sceneEl.renderer.dispose();
   destroyARScene();
 
   // 4. Eliminamos el vídeo del DOM
