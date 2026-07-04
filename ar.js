@@ -1,6 +1,6 @@
-// AR module Handmade Unified v1.09
+// AR module Handmade Unified v1.10
 // Generated as part of the AR refactor.
-// version Handmade Unified v1.09
+// version Handmade Unified v1.10
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -208,44 +208,21 @@ function startAR(modelSrc) {
 }
 
 function stopAR() {
-  const sceneEl = document.querySelector("a-scene");
-  if (sceneEl) {
-    sceneEl.pause();
-  }
+  // 1. Matamos los intervalos primero, para que no sigan intentando renderizar
+  if (envInterval) clearInterval(envInterval);
+  if (arIntervalId) clearInterval(arIntervalId);
 
-  if (window.XR8) {
-    try { 
-      window.XR8.pause(); 
-      window.XR8.stop(); 
-      window.XR8.clearCameraPipelineModules(); 
-    } catch (err) { console.warn("Error deteniendo XR8:", err); }
-  }
-
-  // 2. SEGUNDO: Matar el stream de la cámara explícitamente
-  const videos = document.querySelectorAll("video");
-  videos.forEach((videoEl) => {
-    try {
-      videoEl.pause();
-      videoEl.style.display = "none";
-      if (videoEl.srcObject && videoEl.srcObject.getTracks) {
-        videoEl.srcObject.getTracks().forEach((track) => track.stop());
-      }
-      videoEl.srcObject = null;
-      videoEl.remove(); // Eliminar el elemento video del DOM es vital
-    } catch (err) { console.warn("Error cerrando cámara:", err); }
-  });
-
-    // 3. TERCERO: Limpiar A-Frame y los intervalos de renderizado
+  // 2. Destruimos la escena (esto dispara el cleanup de A-Frame)
   destroyARScene();
 
-  // 4. CUARTO: Limpiar panel debug si existe
-  const debugPanel = document.getElementById("bridgeDebugPanel");
-  if(debugPanel) debugPanel.remove();
-
-  // 5. QUINTO: Resetear variables
+  // 3. Limpiamos variables básicas
   xrLoadPromise = null;
   envMode = "hdr";
-  window.XR8 = null; // Forzamos la limpieza del objeto global
+  window.XR8 = null;
+
+  // 4. Limpiar panel debug si existe
+  const debugPanel = document.getElementById("bridgeDebugPanel");
+  if(debugPanel) debugPanel.remove();
 }
 
 window.AR.isReady = true;
