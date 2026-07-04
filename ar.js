@@ -1,6 +1,6 @@
-// AR module Handmade Unified v1.15
+// AR module Handmade Unified v1.18
 // Generated as part of the AR refactor.
-// version Handmade Unified v1.15
+// version Handmade Unified v1.18
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -208,34 +208,25 @@ function startAR(modelSrc) {
 }
 
 function stopAR() {
-  // 1. Matamos los bucles de renderizado A-Frame ANTES de nada
-  if (window.AFRAME) {
-    const scene = document.querySelector("a-scene");
-    if (scene) scene.pause();
-  }
-
-  // 2. Avisamos al motor AR
-  if (window.XR8) {
-    try { window.XR8.clearCameraPipelineModules(); } catch(e) {}
-  }
-
-  // 3. Destruimos la escena
+  // 1. Destruir escena y canvas
   destroyARScene();
-
-  // 4. Limpiamos cualquier rastro global de A-Frame o XR8
-  window.XR8 = null;
-
-  // 5. Solo cuando A-Frame ha muerto, limpiamos los restos físicos (canvas, video, scripts)
   document.querySelectorAll("canvas").forEach(c => c.remove());
+
+  // 2. DESTRUCCIÓN TOTAL DE REFERENCIAS DE MOTOR
+  window.XR8 = null;
+  window.AFRAME = null;
+  window.THREE = null;
+
+  // 3. Eliminar los scripts del DOM para que el navegador olvide el código
+  const scripts = ["bundleScript", "bridgeScript", "runtimeScript", "xrScript", "xrConfigScript"];
+  scripts.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.remove();
+  });
   
-  // 6. Limpiamos objetos y variables
+  // 4. Limpieza final de variables globales
   xrLoadPromise = null;
   envMode = "hdr";
-
-  const xrScript = document.getElementById("xrScript");
-  if (xrScript) xrScript.remove();
-  const runtimeScript = document.getElementById("runtimeScript");
-  if (runtimeScript) runtimeScript.remove();
   const debugPanel = document.getElementById("bridgeDebugPanel");
   if(debugPanel) debugPanel.remove();
 }
