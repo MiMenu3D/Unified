@@ -1,6 +1,6 @@
-// AR module Handmade Unified v1.11
+// AR module Handmade Unified v1.12
 // Generated as part of the AR refactor.
-// version Handmade Unified v1.11
+// version Handmade Unified v1.12
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -215,18 +215,21 @@ function stopAR() {
   // 2. Destruimos la escena (esto dispara el cleanup de A-Frame)
   destroyARScene();
 
-  // 3. Limpiamos variables básicas
+  // 3. Forzamos la eliminación de cualquier canvas que haya quedado huérfano
+  document.querySelectorAll("canvas").forEach(c => c.remove());
+
+  // 4. Limpiamos variables básicas
   xrLoadPromise = null;
   envMode = "hdr";
   window.XR8 = null;
 
-  // 4. Eliminamos los scripts del DOM para evitar que sigan en memoria
+  // 5. Eliminamos los scripts del DOM para evitar que sigan en memoria
   const xrScript = document.getElementById("xrScript");
   if (xrScript) xrScript.remove();
   const runtimeScript = document.getElementById("runtimeScript");
   if (runtimeScript) runtimeScript.remove();
 
-  // 5. Limpiar panel debug si existe
+  // 6. Limpiar panel debug si existe
   const debugPanel = document.getElementById("bridgeDebugPanel");
   if(debugPanel) debugPanel.remove();
 }
