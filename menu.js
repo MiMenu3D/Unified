@@ -1,6 +1,6 @@
-// Menu module Handmade Unified 1.07
+// Menu Handmade Unified v1.08
 // Generated as part of the AR refactor.
-// version Handmade Unified 1.07
+// version Handmade Unified 1.08
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -142,18 +142,14 @@ function stopAR(){
     window.AR.stopAR();
   }
 
-  // 1. Limpieza de elementos de UI
+    // Limpieza agresiva
+  window.AR = null; 
+
   document.getElementById("lightDebug").style.display = "none";
   document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
   
-  // 2. Forzamos la limpieza del lienzo del navegador
-  document.body.style.display = "none";
-  document.body.offsetHeight; // Truco para forzar repintado
-  document.body.style.display = "block";
-
-  // 3. Restauramos visibilidad y reconstruimos
   document.getElementById("arContainer").style.display = "none";
   const envToggle = document.getElementById("envToggle");
   if (envToggle) envToggle.style.display = "none";
@@ -162,7 +158,7 @@ function stopAR(){
   document.getElementById("mvContainer").style.display = "block";
   document.getElementById("startScreen").style.display = "flex";
   
-  createMV();
+    createMV();
   
   history.replaceState({mode:"menu", current}, "");
 }
