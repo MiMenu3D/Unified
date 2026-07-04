@@ -1,6 +1,6 @@
-// AR module Handmade Unified v1.4
+// AR module Handmade Unified 1.06
 // Generated as part of the AR refactor.
-// version Handmade Unified v1.4
+// version Handmade Unified 1.06
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -208,7 +208,11 @@ function startAR(modelSrc) {
 }
 
 function stopAR() {
-  // 1. PRIMERO: Detener el pipeline de 8th Wall antes de tocar el DOM
+  // 1. Pausamos A-Frame para que deje de renderizar
+  const sceneEl = document.querySelector("a-scene");
+  if (sceneEl) sceneEl.pause();
+
+  // 2. Detenemos XR8
   if (window.XR8) {
     try { 
       window.XR8.pause(); 
@@ -217,31 +221,26 @@ function stopAR() {
     } catch (err) { console.warn("Error deteniendo XR8:", err); }
   }
 
-  // 2. SEGUNDO: Matar el stream de la cámara explícitamente
+  // 3. Destruimos la escena A-Frame
+  destroyARScene();
+
+  // 4. Eliminamos el vídeo del DOM
   const videos = document.querySelectorAll("video");
   videos.forEach((videoEl) => {
     try {
-      videoEl.pause();
-      videoEl.style.display = "none";
       if (videoEl.srcObject && videoEl.srcObject.getTracks) {
         videoEl.srcObject.getTracks().forEach((track) => track.stop());
       }
-      videoEl.srcObject = null;
-      videoEl.remove(); // Eliminar el elemento video del DOM es vital
+      videoEl.remove();
     } catch (err) { console.warn("Error cerrando cámara:", err); }
   });
 
-    // 3. TERCERO: Limpiar A-Frame y los intervalos de renderizado
-  destroyARScene();
-
-  // 4. CUARTO: Limpiar panel debug si existe
+  // 5. Limpieza final de variables
   const debugPanel = document.getElementById("bridgeDebugPanel");
   if(debugPanel) debugPanel.remove();
-
-  // 5. QUINTO: Resetear variables
   xrLoadPromise = null;
   envMode = "hdr";
-  window.XR8 = null; // Forzamos la limpieza del objeto global
+  window.XR8 = null;
 }
 
 window.AR.isReady = true;
