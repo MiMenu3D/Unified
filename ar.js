@@ -1,6 +1,6 @@
-// AR module Handmade Unified v1.10
+// AR module Handmade Unified v1.11
 // Generated as part of the AR refactor.
-// version Handmade Unified v1.10
+// version Handmade Unified v1.11
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -220,7 +220,13 @@ function stopAR() {
   envMode = "hdr";
   window.XR8 = null;
 
-  // 4. Limpiar panel debug si existe
+  // 4. Eliminamos los scripts del DOM para evitar que sigan en memoria
+  const xrScript = document.getElementById("xrScript");
+  if (xrScript) xrScript.remove();
+  const runtimeScript = document.getElementById("runtimeScript");
+  if (runtimeScript) runtimeScript.remove();
+
+  // 5. Limpiar panel debug si existe
   const debugPanel = document.getElementById("bridgeDebugPanel");
   if(debugPanel) debugPanel.remove();
 }
