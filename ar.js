@@ -1,6 +1,6 @@
-// AR module v1.3
+// AR module Handmade Unified v1.4
 // Generated as part of the AR refactor.
-// version 1.3
+// version Handmade Unified v1.4
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -231,10 +231,14 @@ function stopAR() {
     } catch (err) { console.warn("Error cerrando cámara:", err); }
   });
 
-  // 3. TERCERO: Limpiar A-Frame y los intervalos de renderizado
+    // 3. TERCERO: Limpiar A-Frame y los intervalos de renderizado
   destroyARScene();
 
-  // 4. CUARTO: Resetear variables
+  // 4. CUARTO: Limpiar panel debug si existe
+  const debugPanel = document.getElementById("bridgeDebugPanel");
+  if(debugPanel) debugPanel.remove();
+
+  // 5. QUINTO: Resetear variables
   xrLoadPromise = null;
   envMode = "hdr";
   window.XR8 = null; // Forzamos la limpieza del objeto global
