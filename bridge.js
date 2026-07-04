@@ -1,5 +1,5 @@
 const BRIDGE_VERSION = "Bridge Handmade Unified v1.4";
-// version 87.3 Handmade Unified v1.4
+// version 87.3 Handmade Unified v1.5
 
 const panel = document.createElement("div");
 panel.id = "bridgeDebugPanel";
@@ -15,6 +15,15 @@ panel.style.whiteSpace = "pre";
 panel.style.zIndex = "999999";
 panel.style.maxHeight = "85vh";
 panel.style.overflow = "auto";
+panel.style.cursor = "pointer";
+
+let isMinimized = false;
+panel.onclick = (e) => {
+  e.stopPropagation();
+  isMinimized = !isMinimized;
+  panel.style.height = isMinimized ? "20px" : "auto";
+  panel.style.overflow = isMinimized ? "hidden" : "auto";
+};
 
 document.body.appendChild(panel);
 
