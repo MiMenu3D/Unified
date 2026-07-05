@@ -1,4 +1,4 @@
-// Menu v2.0 - dos páginas html - Over Success04-Copilot 1.06
+// Menu v2.0 - dos páginas html - Over Success04-Copilot 1.07
 
 let current = 0;
 let mv = null;
@@ -71,6 +71,9 @@ function startAR(){
   sessionStorage.setItem("modelo_actual", current);
   window.location.href = "ar.html";
 }
+
+// Deshabilita BFCache para esta página — evita el frame congelado al volver de la AR
+window.addEventListener("unload", () => {});
 
 window.addEventListener("pageshow", () => {
   const fromAR = sessionStorage.getItem("from_ar") === "1";
