@@ -134,4 +134,7 @@ function render() {
 }
 
 install();
-setInterval(render, 150);
+const renderIntervalId = setInterval(render, 150);
+window.BridgeCleanup = function() {
+  clearInterval(renderIntervalId);
+};

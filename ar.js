@@ -208,28 +208,37 @@ function startAR(modelSrc) {
 }
 
 function stopAR() {
-  // 1. Lo primero es avisar al motor que vamos a limpiar, SIN forzar el cierre de la cámara aún
+  // 1. Avisar a XR8 antes de tocar nada
   if (window.XR8) {
     try { window.XR8.clearCameraPipelineModules(); } catch(e) {}
   }
 
-  // 2. Destruimos la escena de A-Frame (esto para el renderizado)
+  // 2. Parar intervals y destruir A-Frame ordenadamente
   destroyARScene();
 
-  // 3. Solo cuando A-Frame ha muerto, limpiamos los restos físicos (canvas, video, scripts)
+  // 3. Limpiar canvases huérfanos
   document.querySelectorAll("canvas").forEach(c => c.remove());
-  
-  // 4. Ahora sí, limpiamos los objetos y variables
+
+  // 4. Cancelar el interval del bridge antes de eliminar su script
+  if (typeof window.BridgeCleanup === "function") {
+    window.BridgeCleanup();
+    window.BridgeCleanup = null;
+  }
+
+  // 5. Limpiar estado interno
   xrLoadPromise = null;
   envMode = "hdr";
   window.XR8 = null;
 
-  const xrScript = document.getElementById("xrScript");
-  if (xrScript) xrScript.remove();
-  const runtimeScript = document.getElementById("runtimeScript");
-  if (runtimeScript) runtimeScript.remove();
+  // 6. Eliminar todos los scripts inyectados dinámicamente
+  ["xrScript", "runtimeScript", "xrConfigScript", "bridgeScript"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
+
+  // 7. Eliminar panel de debug
   const debugPanel = document.getElementById("bridgeDebugPanel");
-  if(debugPanel) debugPanel.remove();
+  if (debugPanel) debugPanel.remove();
 }
 
 window.AR.isReady = true;

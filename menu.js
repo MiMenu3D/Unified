@@ -122,7 +122,7 @@ function ensureARModule() {
 function startAR(){
   ensureARModule().then((AR) => {
     history.pushState({mode:"ar", current}, "");
-    destroyMV();
+    // No destroyMV() — el GLB queda en memoria, display:none pausa el rendering
     document.getElementById("mvContainer").style.display = "none";
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("arContainer").style.display = "block";
@@ -138,30 +138,30 @@ function startAR(){
 }
 
 function stopAR(){
-  // Muerte absoluta del contenedor AR y limpieza de la cámara
-  const container = document.getElementById("arContainer");
-  container.innerHTML = ""; 
-  container.style.display = "none";
-  
-  // Destrucción total de cualquier rastro del script AR
-  const arScript = document.getElementById("arModuleScript");
-  if (arScript) arScript.remove(); 
-  
-  // Limpiamos los objetos globales de AR
-  window.AR = null; 
+  // 1. Cleanup ordenado: intervals, XR8, renderer, scripts, bridge panel
+  if (window.AR && typeof window.AR.stopAR === "function") {
+    window.AR.stopAR();
+  }
+
+  // 2. Nulificar referencias globales
+  window.AR = null;
   window.XR8 = null;
 
-  // Reset visual forzado al estado inicial
+  // 3. Eliminar script de ar.js para que la próxima sesión empiece limpia
+  const arScript = document.getElementById("arModuleScript");
+  if (arScript) arScript.remove();
+
+  // 4. Restaurar UI
+  document.getElementById("arContainer").style.display = "none";
   document.body.style.background = "#1f1a17";
   document.getElementById("mvContainer").style.display = "block";
   document.getElementById("startScreen").style.display = "flex";
-  
   const envToggle = document.getElementById("envToggle");
   if (envToggle) envToggle.style.display = "none";
-  
-  // Recreamos el menú desde cero
-  createMV();
-  
+
+  // 5. El model-viewer ya está vivo en memoria — solo mostrarlo
+  if (!mv) createMV();
+
   history.replaceState({mode:"menu", current}, "");
 }
 
