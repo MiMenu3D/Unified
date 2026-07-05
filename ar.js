@@ -1,4 +1,4 @@
-// AR module Handmade Unified v1.14
+// AR module Over Success04-Copilot 1.05
 // Generated as part of the AR refactor.
 
 window.AR = window.AR || {};
@@ -207,37 +207,28 @@ function startAR(modelSrc) {
 }
 
 function stopAR() {
-  // 1. Avisar a XR8 antes de tocar nada
+  // 1. Lo primero es avisar al motor que vamos a limpiar, SIN forzar el cierre de la cámara aún
   if (window.XR8) {
     try { window.XR8.clearCameraPipelineModules(); } catch(e) {}
   }
 
-  // 2. Parar intervals y destruir A-Frame ordenadamente
+  // 2. Destruimos la escena de A-Frame (esto para el renderizado)
   destroyARScene();
 
-  // 3. Limpiar canvases huérfanos
+  // 3. Solo cuando A-Frame ha muerto, limpiamos los restos físicos (canvas, video, scripts)
   document.querySelectorAll("canvas").forEach(c => c.remove());
-
-  // 4. Cancelar el interval del bridge antes de eliminar su script
-  if (typeof window.BridgeCleanup === "function") {
-    window.BridgeCleanup();
-    window.BridgeCleanup = null;
-  }
-
-  // 5. Limpiar estado interno
+  
+  // 4. Ahora sí, limpiamos los objetos y variables
   xrLoadPromise = null;
   envMode = "hdr";
   window.XR8 = null;
 
-  // 6. Eliminar todos los scripts inyectados dinámicamente
-  ["xrScript", "runtimeScript", "xrConfigScript", "bridgeScript"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.remove();
-  });
-
-  // 7. Eliminar panel de debug
+  const xrScript = document.getElementById("xrScript");
+  if (xrScript) xrScript.remove();
+  const runtimeScript = document.getElementById("runtimeScript");
+  if (runtimeScript) runtimeScript.remove();
   const debugPanel = document.getElementById("bridgeDebugPanel");
-  if (debugPanel) debugPanel.remove();
+  if(debugPanel) debugPanel.remove();
 }
 
 window.AR.isReady = true;

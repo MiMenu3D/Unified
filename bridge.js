@@ -1,5 +1,5 @@
-const BRIDGE_VERSION = "Bridge OverSuccess04-Copilot 1.00";
-// Over Success04-Copilot 1.00
+const BRIDGE_VERSION = "Bridge Handmade Unified v1.4";
+// version 87.3 Handmade Unified v1.5
 
 const panel = document.createElement("div");
 panel.id = "bridgeDebugPanel";
@@ -134,7 +134,4 @@ function render() {
 }
 
 install();
-const renderIntervalId = setInterval(render, 150);
-window.BridgeCleanup = function() {
-  clearInterval(renderIntervalId);
-};
+setInterval(render, 150);

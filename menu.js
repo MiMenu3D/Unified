@@ -1,22 +1,4 @@
-// Over Success04-Copilot 1.00
-// Generated as part of the AR refactor.
-
-// Menu principal y UI general
-window.RepoFusion = window.RepoFusion || {};
-window.RepoFusion.pose = {
-  camera: null,
-  marker: null,
-  intrinsics: null,
-  tracking: "waiting"
-};
-
-window.RepoFusion.setPose = function (data) {
-  if (!data) return;
-  window.RepoFusion.pose.camera = data.camera || null;
-  window.RepoFusion.pose.marker = data.marker || null;
-  window.RepoFusion.pose.intrinsics = data.intrinsics || null;
-  window.RepoFusion.pose.tracking = data.tracking || "unknown";
-};
+// Menu v2.0 - arquitectura dos páginas (index.html + ar.html)
 
 let current = 0;
 let mv = null;
@@ -84,100 +66,13 @@ function next(){
   updateMV();
 }
 
-function ensureARModule() {
-  return new Promise((resolve, reject) => {
-    if (window.AR && window.AR.isReady) {
-      return resolve(window.AR);
-    }
-
-    const existing = document.getElementById("arModuleScript");
-    const finish = () => {
-      if (window.AR && window.AR.isReady) {
-        resolve(window.AR);
-      } else {
-        reject(new Error("AR module failed to initialize."));
-      }
-    };
-
-    if (existing) {
-      if (existing.readyState === "complete" || existing.readyState === "loaded") {
-        return finish();
-      }
-      existing.addEventListener("load", finish, { once: true });
-      existing.addEventListener("error", () => reject(new Error("Failed to load ar.js")), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = "arModuleScript";
-    script.src = "ar.js";
-    script.defer = true;
-    script.onload = finish;
-    script.onerror = () => reject(new Error("Failed to load ar.js"));
-    document.body.appendChild(script);
-  });
-}
-
 function startAR(){
-  ensureARModule().then((AR) => {
-    history.pushState({mode:"ar", current}, "");
-    // No destroyMV() — el GLB queda en memoria, display:none pausa el rendering
-    document.getElementById("mvContainer").style.display = "none";
-    document.getElementById("startScreen").style.display = "none";
-    document.getElementById("arContainer").style.display = "block";
-    document.body.style.background = "transparent";
-    const envToggle = document.getElementById("envToggle");
-    if (envToggle) envToggle.style.display = "block";
-    AR.startAR(models[current]).catch((err) => {
-      console.warn("AR.startAR failed:", err);
-    });
-  }).catch((err) => {
-    console.warn("No se pudo cargar el módulo AR:", err);
-  });
+  sessionStorage.setItem("modelo_actual", current);
+  window.location.href = "ar.html";
 }
-
-function stopAR(){
-  // 1. Cleanup ordenado: intervals, XR8, renderer, scripts, bridge panel
-  if (window.AR && typeof window.AR.stopAR === "function") {
-    window.AR.stopAR();
-  }
-
-  // 2. Nulificar referencias globales
-  window.AR = null;
-  window.XR8 = null;
-
-  // 3. Eliminar script de ar.js para que la próxima sesión empiece limpia
-  const arScript = document.getElementById("arModuleScript");
-  if (arScript) arScript.remove();
-
-  // 4. Restaurar UI
-  document.getElementById("arContainer").style.display = "none";
-  document.body.style.background = "#1f1a17";
-  document.getElementById("mvContainer").style.display = "block";
-  document.getElementById("startScreen").style.display = "flex";
-  const envToggle = document.getElementById("envToggle");
-  if (envToggle) envToggle.style.display = "none";
-
-  // 5. El model-viewer ya está vivo en memoria — solo mostrarlo
-  if (!mv) createMV();
-
-  history.replaceState({mode:"menu", current}, "");
-}
-
-window.addEventListener("popstate", (event) => {
-  if (!event.state || event.state.mode !== "ar") {
-    stopAR();
-  }
-});
-
-window.toggleEnv = function() {
-  if (window.AR && typeof window.AR.toggleEnv === "function") {
-    window.AR.toggleEnv();
-  }
-};
 
 window.addEventListener("DOMContentLoaded", () => {
-  history.replaceState({mode:"menu", current}, "");
-  document.getElementById("envToggle").style.display = "none";
+  const saved = sessionStorage.getItem("modelo_actual");
+  if (saved !== null) current = parseInt(saved);
   createMV();
 });

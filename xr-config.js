@@ -1,4 +1,4 @@
-// 8th Wall image target configuration - Over Success04-Copilot 1.00
+// 8th Wall image target configuration - Over Success04-Copilot 1.05
 // Only configure the tracker, do not auto-start the 8th Wall scene.
 window.xrConfigData = {
   imageTargetData: [

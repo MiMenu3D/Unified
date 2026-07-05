@@ -3,11 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Over Success04-Copilot 1.00</title>
+<title>Over Success04-Copilot 1.05</title>
 <!-- version 3.5 -->
 
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
 <style>
@@ -80,19 +78,7 @@ model-viewer {
   border: none;
 }
 
-#arContainer {
-  position: fixed;
-  inset: 0;
-  background: transparent;
-  z-index: 51;
-  display: none;
-}
 
-a-scene, a-scene canvas, #arContainer video {
-  background: transparent !important;
-}
-
-a-scene { width:100%; height:100%; }
 </style>
 </head>
 
@@ -101,7 +87,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Over Success04-Copilot 1.00</div>
+  <div id="prueba">Over Success04-Copilot 1.05</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -112,11 +98,6 @@ a-scene { width:100%; height:100%; }
   <button class="button" onclick="startAR()">Ver en tu mesa</button>
 </div>
 
-
-<div id="arContainer"></div>
-  <button id="envToggle" onclick="toggleEnv()" style="display:none; position: fixed; bottom: 20px; right: 20px; z-index: 99999; padding: 12px 16px; border-radius: 12px; border: none; background: white; color: black; font-size: 14px;">
-Env: HDR
-</button>
 
 <script src="menu.js"></script>
 </body>
