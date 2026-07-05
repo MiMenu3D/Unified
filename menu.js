@@ -1,4 +1,4 @@
-// Menu v2.0 - dos páginas html - Over Success04-Copilot 1.08
+// Menu v2.0 - dos páginas html - Over Success04-Copilot 1.09
 
 let current = 0;
 let mv = null;
@@ -67,8 +67,7 @@ function next(){
 }
 
 function startAR(){
-  // Ocultar model-viewer antes de navegar — BFCache capturará opacity:0, no el frame visible
-  if (mv) { mv.style.transition = "none"; mv.style.opacity = "0"; }
+  destroyMV();
   sessionStorage.setItem("from_ar", "1");
   sessionStorage.setItem("modelo_actual", current);
   window.location.href = "ar.html";
