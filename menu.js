@@ -1,4 +1,4 @@
-// Menu v2.0 - dos páginas html - Over Success04-Copilot 1.07
+// Menu v2.0 - dos páginas html - Over Success04-Copilot 1.08
 
 let current = 0;
 let mv = null;
@@ -67,13 +67,12 @@ function next(){
 }
 
 function startAR(){
+  // Ocultar model-viewer antes de navegar — BFCache capturará opacity:0, no el frame visible
+  if (mv) { mv.style.transition = "none"; mv.style.opacity = "0"; }
   sessionStorage.setItem("from_ar", "1");
   sessionStorage.setItem("modelo_actual", current);
   window.location.href = "ar.html";
 }
-
-// Deshabilita BFCache para esta página — evita el frame congelado al volver de la AR
-window.addEventListener("unload", () => {});
 
 window.addEventListener("pageshow", () => {
   const fromAR = sessionStorage.getItem("from_ar") === "1";
