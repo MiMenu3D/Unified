@@ -1,6 +1,5 @@
 // AR module Handmade Unified v1.14
 // Generated as part of the AR refactor.
-// version Handmade Unified v1.14
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
