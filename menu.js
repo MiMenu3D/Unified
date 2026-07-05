@@ -1,6 +1,5 @@
-// Menu Handmade Unified v1.16
+// Over Success04-Copilot 1.00
 // Generated as part of the AR refactor.
-// version Handmade Unified 1.16
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
