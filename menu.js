@@ -1,4 +1,4 @@
-// Menu v2.0 - arquitectura dos páginas (index.html + ar.html)
+// Menu v2.0 - dos páginas html - Over Success04-Copilot 1.06
 
 let current = 0;
 let mv = null;
@@ -67,12 +67,23 @@ function next(){
 }
 
 function startAR(){
+  sessionStorage.setItem("from_ar", "1");
   sessionStorage.setItem("modelo_actual", current);
   window.location.href = "ar.html";
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  const saved = sessionStorage.getItem("modelo_actual");
-  if (saved !== null) current = parseInt(saved);
+window.addEventListener("pageshow", () => {
+  const fromAR = sessionStorage.getItem("from_ar") === "1";
+  sessionStorage.removeItem("from_ar");
+
+  if (fromAR) {
+    const saved = sessionStorage.getItem("modelo_actual");
+    if (saved !== null) current = parseInt(saved);
+  } else {
+    current = 0;
+  }
+
+  // Siempre recrear model-viewer limpio (evita glitch de BFCache)
+  destroyMV();
   createMV();
 });
