@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 2.02</title>
+  <title>AR Over Success04-Copilot 2.03</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -73,6 +73,7 @@
     document.body.appendChild(panel);
 
     window.Tracking = { marker: null, tracking: "waiting", source: "none", lastEvent: "none" };
+    let lastEventPoseTs = 0;
 
     function updateTracking(marker, tracking, source, eventName) {
       window.Tracking.marker = marker || window.Tracking.marker;
@@ -105,17 +106,19 @@
         listeners: [
           {
             event: "reality.imagefound",
-            process: ({ detail }) => {
-              const marker = toMarker(detail);
+            process: (evt) => {
+              const marker = toMarker(evt?.detail || evt);
               if (!marker) return;
+              lastEventPoseTs = performance.now();
               updateTracking(marker, "tracking", "event", "reality.imagefound");
             }
           },
           {
             event: "reality.imageupdated",
-            process: ({ detail }) => {
-              const marker = toMarker(detail);
+            process: (evt) => {
+              const marker = toMarker(evt?.detail || evt);
               if (!marker) return;
+              lastEventPoseTs = performance.now();
               updateTracking(marker, "tracking", "event", "reality.imageupdated");
             }
           },
@@ -131,10 +134,11 @@
           // Fallback de bajo coste si por cualquier razón no llegan eventos utilizables
           const reality = processCpuResult?.reality;
           const img = reality?.detectedImages?.[0];
-          if (img && img.position && img.rotation) {
+          const recentEventActive = (performance.now() - lastEventPoseTs) < 250;
+          if (!recentEventActive && img && img.position && img.rotation) {
             const marker = { position: img.position, rotation: img.rotation, scale: img.scale || 1, name: img.name || "marker" };
             updateTracking(marker, reality?.trackingStatus || "tracking", "fallback", "onUpdate");
-          } else if (window.Tracking.tracking === "tracking") {
+          } else if (!recentEventActive && window.Tracking.tracking === "tracking") {
             updateTracking(window.Tracking.marker, "lost", window.Tracking.source, "lost-by-onUpdate");
           }
         }
@@ -152,7 +156,6 @@
       out += "SOURCE: " + window.Tracking.source + "\n";
       out += "EVENT: " + window.Tracking.lastEvent + "\n";
       out += "SCALE: " + s + "\n";
-      out += "HAS_MARKER: " + (m ? "YES" : "NO") + "\n";
       const v = document.querySelector("video");
       out += "VIDEO: " + (v ? "YES" : "NO");
       panel.textContent = out;
