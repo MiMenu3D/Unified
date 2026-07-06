@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over 8thWallPuro-Copilot 3.01</title>
+  <title>AR Over Success04-Copilot 2.03</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -180,7 +180,7 @@
     // FIX 2: solo runtime y xr — bridge y xr-config ya están inlineados arriba
     function loadXR8Assets() {
       loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
-      loadScript({ id: "xrScript", src: "https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js", async: true });
+      loadScript({ id: "xrScript", src: "./external/xr/xr.js", async: true, attrs: { "data-preload-chunks": "face, slam" } });
     }
 
     function waitForXR8() {
