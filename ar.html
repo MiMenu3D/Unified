@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 2.05</title>
+  <title>AR From 8thWallPuro-Copilot 3.02</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -27,55 +27,53 @@
       window.RepoFusion.pose.tracking = data.tracking || "unknown";
     };
 
-    // === xr-config (target real + width física explícita) ===
-    const TARGET_PHYSICAL_WIDTH_M = 0.115;
-    const DEFAULT_TARGET = {
-      type: "PLANAR",
-      properties: { top: 0, left: 312, width: 1875, height: 2500, isRotated: false, originalWidth: 2500, originalHeight: 2500 },
-      imagePath: "image-targets/marker_luminance.png",
-      metadata: null,
-      name: "marker",
-      resources: {
-        originalImage: "marker_original.png",
-        croppedImage: "marker_cropped.png",
-        thumbnailImage: "marker_thumbnail.png",
-        luminanceImage: "marker_luminance.png"
-      },
-      created: 1781091877698,
-      updated: 1781091877698
+    // === xr-config (inlineado) ===
+    window.xrConfigData = {
+      imageTargetData: [{
+        type: "PLANAR",
+        properties: { top: 0, left: 312, width: 1875, height: 2500, isRotated: false, originalWidth: 2500, originalHeight: 2500 },
+        imagePath: "image-targets/marker_luminance.png",
+        metadata: null,
+        physicalWidthInMeters: 0.115,
+        name: "marker",
+        resources: {
+          originalImage: "marker_original.png",
+          croppedImage: "marker_cropped.png",
+          thumbnailImage: "marker_thumbnail.png",
+          luminanceImage: "marker_luminance.png"
+        },
+        created: 1781091877698,
+        updated: 1781091877698
+      }]
     };
-    window.xrConfigData = { imageTargetData: [DEFAULT_TARGET] };
 
-    async function buildXRConfigData() {
-      let target = { ...DEFAULT_TARGET };
+    async function hydrateTargetConfigFromFile() {
       try {
         const res = await fetch("image-targets/marker.json", { cache: "no-store" });
-        if (res.ok) target = await res.json();
+        if (!res.ok) return;
+        const target = await res.json();
+        target.physicalWidthInMeters = 0.115;
+        window.xrConfigData = { imageTargetData: [target] };
       } catch (_) {
-        // Usa target embebido si marker.json no está accesible en este entorno
+        // Mantener config embebida si marker.json no está disponible
       }
-      target.physicalWidthInMeters = TARGET_PHYSICAL_WIDTH_M;
-      target.loadAutomatically = true;
-      return { imageTargetData: [target] };
     }
 
     async function configureXR8Targets() {
-      if (!window.XR8 || !window.XR8.XrController || typeof window.XR8.XrController.configure !== "function") return;
-      window.xrConfigData = await buildXRConfigData();
-      window.XR8.XrController.configure(window.xrConfigData);
+      if (window.XR8 && window.XR8.XrController && typeof window.XR8.XrController.configure === "function") {
+        await hydrateTargetConfigFromFile();
+        window.XR8.XrController.configure(window.xrConfigData);
+      }
     }
-
     if (window.XR8) { configureXR8Targets().catch(() => {}); }
     else {
-      const onXrLoaded = () => configureXR8Targets().catch(() => {});
-      window.addEventListener("xrloaded", onXrLoaded, { once: true });
-      window.addEventListener("XRloaded", onXrLoaded, { once: true });
+      const onLoaded = () => configureXR8Targets().catch(() => {});
+      window.addEventListener("xrloaded", onLoaded, { once: true });
+      window.addEventListener("XRloaded", onLoaded, { once: true });
     }
 
-    // === Bridge v3.0 (tracking-tuned) ===
-    const BRIDGE_VERSION = "Bridge v3.0";
-    const EVENT_PRIORITY_MS = 450;
-    const LOST_GRACE_MS = 1600;
+    // === Bridge v4.0 (event-only + pose-stable) ===
+    const BRIDGE_VERSION = "Bridge v4.0";
     const panel = document.createElement("div");
     panel.id = "bridgeDebugPanel";
     panel.style.cssText = "position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.85);color:lime;padding:10px;font-family:monospace;font-size:12px;white-space:pre;z-index:999999;max-height:85vh;overflow:auto;cursor:pointer;";
@@ -91,6 +89,7 @@
     window.Tracking = { marker: null, tracking: "waiting", source: "none", lastEvent: "none" };
     let lastEventPoseTs = 0;
     let lastPoseTs = 0;
+    let lastStableQuat = null;
 
     function updateTracking(marker, tracking, source, eventName) {
       window.Tracking.marker = marker || window.Tracking.marker;
@@ -103,15 +102,50 @@
       }
     }
 
+    function markerFromMatrix(matrixLike, name, fallbackScale) {
+      if (!Array.isArray(matrixLike) || matrixLike.length !== 16) return null;
+      const m = new THREE.Matrix4();
+      m.fromArray(matrixLike);
+      const p = new THREE.Vector3();
+      const q = new THREE.Quaternion();
+      const s = new THREE.Vector3();
+      m.decompose(p, q, s);
+      const qObj = { x: q.x, y: q.y, z: q.z, w: q.w };
+      if (lastStableQuat) {
+        const dot = q.x * lastStableQuat.x + q.y * lastStableQuat.y + q.z * lastStableQuat.z + q.w * lastStableQuat.w;
+        if (dot < 0) {
+          qObj.x *= -1; qObj.y *= -1; qObj.z *= -1; qObj.w *= -1;
+        }
+      }
+      lastStableQuat = { ...qObj };
+      return {
+        position: { x: p.x, y: p.y, z: p.z },
+        rotation: qObj,
+        scale: Math.max(s.x || fallbackScale || 1, 0.0001),
+        name: name || "marker"
+      };
+    }
+
     function toMarker(payload) {
       if (!payload) return null;
       const candidate = payload.image || payload.target || payload;
+      const matrixCandidate = candidate.transform || candidate.matrix || payload.transform || payload.matrix;
+      const byMatrix = markerFromMatrix(matrixCandidate, candidate.name || payload.name, candidate.scale ?? payload.scale ?? 1);
+      if (byMatrix) return byMatrix;
       const position = candidate.position || payload.position || null;
       const rotation = candidate.rotation || payload.rotation || null;
       if (!position || !rotation) return null;
+      const qObj = { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w };
+      if (lastStableQuat) {
+        const dot = qObj.x * lastStableQuat.x + qObj.y * lastStableQuat.y + qObj.z * lastStableQuat.z + qObj.w * lastStableQuat.w;
+        if (dot < 0) {
+          qObj.x *= -1; qObj.y *= -1; qObj.z *= -1; qObj.w *= -1;
+        }
+      }
+      lastStableQuat = { ...qObj };
       return {
         position,
-        rotation,
+        rotation: qObj,
         scale: candidate.scale ?? payload.scale ?? 1,
         name: candidate.name || payload.name || "marker"
       };
@@ -144,23 +178,10 @@
             event: "reality.imagelost",
             process: () => {
               // Mantener última pose para preservar persistencia visual vía VIO
-              updateTracking(window.Tracking.marker, "limited", "event", "reality.imagelost");
+              updateTracking(window.Tracking.marker, "lost", "event", "reality.imagelost");
             }
           }
-        ],
-        onUpdate: ({ processCpuResult }) => {
-          // Fallback sólo cuando no hay evento reciente para evitar pelear con la vía principal
-          const reality = processCpuResult?.reality;
-          const img = reality?.detectedImages?.[0];
-          const now = performance.now();
-          const recentEventActive = (now - lastEventPoseTs) < EVENT_PRIORITY_MS;
-          if (!recentEventActive && img && img.position && img.rotation) {
-            const marker = { position: img.position, rotation: img.rotation, scale: img.scale || 1, name: img.name || "marker" };
-            updateTracking(marker, reality?.trackingStatus || "tracking", "fallback", "onUpdate");
-          } else if (!recentEventActive && (now - lastPoseTs) > LOST_GRACE_MS && window.Tracking.tracking !== "waiting") {
-            updateTracking(window.Tracking.marker, "lost", window.Tracking.source, "lost-by-onUpdate");
-          }
-        }
+        ]
       });
     }
 
@@ -175,9 +196,7 @@
       out += "SOURCE: " + window.Tracking.source + "\n";
       out += "EVENT: " + window.Tracking.lastEvent + "\n";
       out += "SCALE: " + s + "\n";
-      out += "POSE_AGE_MS: " + (lastPoseTs ? Math.round(performance.now() - lastPoseTs) : "-") + "\n";
-      out += "XR_BOOT: " + xrBootState.status + " (" + xrBootState.source + ")\n";
-      out += "XR8: " + (window.XR8 ? "YES" : "NO") + "\n";
+      out += "POSE_AGE: " + (lastPoseTs ? Math.round(performance.now() - lastPoseTs) + "ms" : "-") + "\n";
       const v = document.querySelector("video");
       out += "VIDEO: " + (v ? "YES" : "NO");
       panel.textContent = out;
@@ -187,114 +206,35 @@
     // === AR engine ===
     let originalEnv = null, cameraEnv = null, envMode = "hdr";
     let pmremGenerator = null, cameraRT = null;
-    let envInterval = null, arAnimationId = null, xrLoadPromise = null;
+    let envInterval = null, arIntervalId = null, xrLoadPromise = null;
     let envTexture = null, envCanvas = null, video = null;
     let markerFound = false, scanOverlay = null;
-    let xrBootState = { status: "idle", source: "none" };
-    let poseInitialized = false;
-    const MODEL_SCALE_MULTIPLIER = 8;
+    let snapFramesLeft = 0;
 
-    function loadScriptOnce({ id, src, async = false, attrs = {} }) {
-      return new Promise((resolve, reject) => {
-        const existing = document.getElementById(id);
-        if (existing) {
-          if (existing.dataset.loaded === "1") { resolve("already"); return; }
-          existing.addEventListener("load", () => {
-            existing.dataset.loaded = "1";
-            resolve("loaded");
-          }, { once: true });
-          existing.addEventListener("error", () => reject(new Error("Script failed: " + src)), { once: true });
-          return;
-        }
-        const s = document.createElement("script");
-        s.id = id;
-        s.src = src;
-        s.async = async;
-        Object.entries(attrs).forEach(([k, v]) => s.setAttribute(k, v));
-        s.addEventListener("load", () => {
-          s.dataset.loaded = "1";
-          resolve("loaded");
-        }, { once: true });
-        s.addEventListener("error", () => reject(new Error("Script failed: " + src)), { once: true });
-        document.body.appendChild(s);
-      });
+    function loadScript({ id, src, async = false, attrs = {} }) {
+      if (document.getElementById(id)) return;
+      const s = document.createElement("script");
+      s.id = id; s.src = src; s.async = async;
+      Object.entries(attrs).forEach(([k, v]) => s.setAttribute(k, v));
+      document.body.appendChild(s);
     }
 
-    function timeoutReject(ms, label) {
-      return new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(label + " timeout")), ms);
-      });
+    // FIX 2: solo runtime y xr — bridge y xr-config ya están inlineados arriba
+    function loadXR8Assets() {
+      loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
+      loadScript({ id: "xrScript", src: "./external/xr/xr.js", async: true, attrs: { "data-preload-chunks": "face, slam" } });
     }
 
-    // FIX 2: arranque robusto (local por defecto, CDN opcional)
-    async function loadXR8Assets() {
-      if (window.XR8) {
-        xrBootState = { status: "ready", source: "already" };
-        return "already";
-      }
-
-      xrBootState = { status: "loading-runtime", source: "none" };
-      await loadScriptOnce({ id: "runtimeScript", src: "./external/runtime/runtime.js", attrs: { crossorigin: "anonymous" } });
-
-      const forceMode = new URLSearchParams(window.location.search).get("xr"); // local | cdn
-
-      const loadLocal = async () => {
-        xrBootState = { status: "loading-local", source: "local" };
-        await loadScriptOnce({
-          id: "xrScriptLocal",
-          src: "./external/xr/xr.js",
-          async: true,
-          attrs: { "data-preload-chunks": "face, slam" }
-        });
-        await waitForXR8(9000);
-        xrBootState = { status: "ready", source: "local" };
-        return "local";
-      };
-
-      const loadCdn = async () => {
-        xrBootState = { status: "loading-cdn", source: "cdn" };
-        await Promise.race([
-          loadScriptOnce({
-            id: "xrScriptCdn",
-            src: "https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js",
-            async: true,
-            attrs: { crossorigin: "anonymous", "data-preload-chunks": "slam" }
-          }).then(() => waitForXR8(7000)),
-          timeoutReject(9000, "xr-cdn")
-        ]);
-        xrBootState = { status: "ready", source: "cdn" };
-        return "cdn";
-      };
-
-      if (forceMode === "local") return loadLocal();
-      if (forceMode === "cdn") {
-        try { return await loadCdn(); }
-        catch (_) { return loadLocal(); }
-      }
-
-      try {
-        return await loadLocal();
-      } catch (_) {
-        return loadCdn();
-      }
-    }
-
-    function waitForXR8(timeoutMs = 0) {
-      if (window.XR8) return Promise.resolve(window.XR8);
-
+    function waitForXR8() {
       if (!xrLoadPromise) {
         xrLoadPromise = new Promise((resolve) => {
+          if (window.XR8) { resolve(window.XR8); return; }
           const cb = () => resolve(window.XR8);
           window.addEventListener("xrloaded", cb, { once: true });
           window.addEventListener("XRloaded", cb, { once: true });
         });
       }
-
-      if (!timeoutMs) return xrLoadPromise;
-      return Promise.race([
-        xrLoadPromise,
-        timeoutReject(timeoutMs, "XR8 ready")
-      ]);
+      return xrLoadPromise;
     }
 
     function createARScene(modelSrc) {
@@ -324,47 +264,44 @@
 
       const sceneEl = container.querySelector("a-scene");
       sceneEl.addEventListener("loaded", () => {
-        if (arAnimationId) cancelAnimationFrame(arAnimationId);
-        poseInitialized = false;
-
-        const applyPose = () => {
-          arAnimationId = requestAnimationFrame(applyPose);
+        if (arIntervalId) clearInterval(arIntervalId);
+        arIntervalId = setInterval(() => {
           const root = document.getElementById("trackingRoot");
           if (!root || !window.RepoFusion) return;
           const marker = window.RepoFusion.pose.marker;
           const hasMarker = marker && marker.position && marker.rotation;
           if (!markerFound && hasMarker) {
             markerFound = true;
+            snapFramesLeft = 8;
             const model = document.getElementById("aframeModel");
             if (model) model.setAttribute("visible", true);
             if (scanOverlay) scanOverlay.style.display = "none";
           }
+          if (window.RepoFusion.pose.tracking === "tracking" && hasMarker && snapFramesLeft === 0 && (performance.now() - lastEventPoseTs) < 120) {
+            snapFramesLeft = 2;
+          }
           if (!hasMarker) return;
-
-          const eventFresh = (performance.now() - lastEventPoseTs) < EVENT_PRIORITY_MS;
-          const fastAlpha = eventFresh ? 0.82 : 0.45;
-          const slowAlpha = eventFresh ? 0.60 : 0.25;
-
           const targetPosition = new THREE.Vector3(marker.position.x, marker.position.y, marker.position.z);
           const targetQuat = new THREE.Quaternion(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
-          const rawScale = Math.max(marker.scale || 1, 0.0001) * MODEL_SCALE_MULTIPLIER;
+          if (lastStableQuat) {
+            const dot = targetQuat.x * lastStableQuat.x + targetQuat.y * lastStableQuat.y + targetQuat.z * lastStableQuat.z + targetQuat.w * lastStableQuat.w;
+            if (dot < 0) targetQuat.set(-targetQuat.x, -targetQuat.y, -targetQuat.z, -targetQuat.w);
+          }
+          const targetScale = Math.max(marker.scale || 1, 0.0001) * 8;
+          const currentScale = root.object3D.scale.x || targetScale;
 
-          if (!poseInitialized) {
+          if (snapFramesLeft > 0) {
             root.object3D.position.copy(targetPosition);
             root.object3D.quaternion.copy(targetQuat);
-            root.object3D.scale.setScalar(rawScale);
-            poseInitialized = true;
-            return;
+            root.object3D.scale.setScalar(targetScale);
+            snapFramesLeft -= 1;
+          } else {
+            root.object3D.position.lerp(targetPosition, 0.55);
+            root.object3D.quaternion.slerp(targetQuat, 0.6);
+            const boundedScale = THREE.MathUtils.clamp(targetScale, currentScale * 0.8, currentScale * 1.25);
+            root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, boundedScale, 0.5));
           }
-
-          root.object3D.position.lerp(targetPosition, fastAlpha);
-          root.object3D.quaternion.slerp(targetQuat, fastAlpha);
-          const currentScale = root.object3D.scale.x || rawScale;
-          const maxDelta = Math.max(currentScale * 0.18, 0.02);
-          const boundedScale = THREE.MathUtils.clamp(rawScale, currentScale - maxDelta, currentScale + maxDelta);
-          root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, boundedScale, slowAlpha));
-        };
-        applyPose();
+        }, 30);
 
         pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
         pmremGenerator.compileEquirectangularShader();
@@ -379,32 +316,31 @@
             cameraEnv.colorSpace = THREE.SRGBColorSpace;
 
             envCanvas = document.createElement("canvas");
-            envCanvas.width = 32; envCanvas.height = 32;
+            envCanvas.width = 64; envCanvas.height = 64;
             envTexture = new THREE.CanvasTexture(envCanvas);
             envTexture.mapping = THREE.EquirectangularReflectionMapping;
             const ctx = envCanvas.getContext("2d");
             let smoothed = 120;
 
             envInterval = setInterval(() => {
-              if (envMode !== "cam") return;
               if (!video || video.readyState < 2) return;
-              ctx.drawImage(video, 0, 0, 32, 32);
+              ctx.drawImage(video, 0, 0, 64, 64);
               envTexture.needsUpdate = true;
               if (pmremGenerator) {
                 if (cameraRT) cameraRT.dispose();
                 cameraRT = pmremGenerator.fromEquirectangular(envTexture);
                 if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
               }
-              const pixels = ctx.getImageData(0, 0, 32, 32).data;
+              const pixels = ctx.getImageData(0, 0, 64, 64).data;
               let total = 0;
               for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
               const brightness = total / (pixels.length / 4);
               smoothed += (brightness - smoothed) * 0.08;
               const exposure = 0.6 + (smoothed / 255) * 0.9;
               if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
-            }, 120);
+            }, 50);
           }
-        }, 300);
+        }, 500);
 
         new THREE.RGBELoader().load("terrace_sea.hdr", (hdr) => {
           hdr.mapping = THREE.EquirectangularReflectionMapping;
@@ -421,15 +357,8 @@
     }
 
     function startAR(modelSrc) {
-      return loadXR8Assets()
-        .then(() => createARScene(modelSrc))
-        .catch((err) => {
-          xrBootState = { status: "error", source: xrBootState.source };
-          window.Tracking.lastEvent = "xr-boot-error";
-          window.Tracking.source = "boot";
-          console.error("XR boot failed:", err);
-          throw err;
-        });
+      loadXR8Assets();
+      return waitForXR8().then(() => createARScene(modelSrc));
     }
 
     window.toggleEnv = function() {
