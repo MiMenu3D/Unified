@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR From 8thWallPuro-Copilot 3.02</title>
+  <title>AR Over Success04-Copilot 3.10</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -20,10 +20,12 @@
   <script>
     // === FIX 1: RepoFusion completo, incluyendo setPose ===
     window.RepoFusion = {};
-    window.RepoFusion.pose = { marker: null, tracking: "waiting" };
+    window.RepoFusion.pose = { camera: null, marker: null, intrinsics: null, tracking: "waiting" };
     window.RepoFusion.setPose = function(data) {
       if (!data) return;
+      window.RepoFusion.pose.camera = data.camera || window.RepoFusion.pose.camera || null;
       window.RepoFusion.pose.marker   = data.marker   || null;
+      window.RepoFusion.pose.intrinsics = data.intrinsics || window.RepoFusion.pose.intrinsics || null;
       window.RepoFusion.pose.tracking = data.tracking || "unknown";
     };
 
@@ -35,6 +37,7 @@
         imagePath: "image-targets/marker_luminance.png",
         metadata: null,
         physicalWidthInMeters: 0.115,
+        loadAutomatically: true,
         name: "marker",
         resources: {
           originalImage: "marker_original.png",
@@ -47,33 +50,19 @@
       }]
     };
 
-    async function hydrateTargetConfigFromFile() {
-      try {
-        const res = await fetch("image-targets/marker.json", { cache: "no-store" });
-        if (!res.ok) return;
-        const target = await res.json();
-        target.physicalWidthInMeters = 0.115;
-        window.xrConfigData = { imageTargetData: [target] };
-      } catch (_) {
-        // Mantener config embebida si marker.json no está disponible
-      }
-    }
-
-    async function configureXR8Targets() {
+    function configureXR8Targets() {
       if (window.XR8 && window.XR8.XrController && typeof window.XR8.XrController.configure === "function") {
-        await hydrateTargetConfigFromFile();
         window.XR8.XrController.configure(window.xrConfigData);
       }
     }
-    if (window.XR8) { configureXR8Targets().catch(() => {}); }
+    if (window.XR8) { configureXR8Targets(); }
     else {
-      const onLoaded = () => configureXR8Targets().catch(() => {});
-      window.addEventListener("xrloaded", onLoaded, { once: true });
-      window.addEventListener("XRloaded", onLoaded, { once: true });
+      window.addEventListener("xrloaded", configureXR8Targets, { once: true });
+      window.addEventListener("XRloaded", configureXR8Targets, { once: true });
     }
 
-    // === Bridge v4.0 (event-only + pose-stable) ===
-    const BRIDGE_VERSION = "Bridge v4.0";
+    // === Bridge v5.0 (onUpdate-only, clean-repo style) ===
+    const BRIDGE_VERSION = "Bridge v5.0";
     const panel = document.createElement("div");
     panel.id = "bridgeDebugPanel";
     panel.style.cssText = "position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.85);color:lime;padding:10px;font-family:monospace;font-size:12px;white-space:pre;z-index:999999;max-height:85vh;overflow:auto;cursor:pointer;";
@@ -86,102 +75,40 @@
     };
     document.body.appendChild(panel);
 
-    window.Tracking = { marker: null, tracking: "waiting", source: "none", lastEvent: "none" };
-    let lastEventPoseTs = 0;
+    window.Tracking = { camera: null, marker: null, intrinsics: null, tracking: "waiting", source: "none", lastEvent: "none" };
     let lastPoseTs = 0;
-    let lastStableQuat = null;
 
-    function updateTracking(marker, tracking, source, eventName) {
+    function updateTracking(marker, tracking, source, eventName, camera, intrinsics) {
       window.Tracking.marker = marker || window.Tracking.marker;
       window.Tracking.tracking = tracking;
       window.Tracking.source = source;
       window.Tracking.lastEvent = eventName;
+      if (camera) window.Tracking.camera = camera;
+      if (intrinsics) window.Tracking.intrinsics = intrinsics;
       if (marker && marker.position && marker.rotation) lastPoseTs = performance.now();
       if (window.RepoFusion && window.RepoFusion.setPose) {
-        window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: tracking });
+        window.RepoFusion.setPose({ camera: window.Tracking.camera, marker: window.Tracking.marker, intrinsics: window.Tracking.intrinsics, tracking: tracking });
       }
-    }
-
-    function markerFromMatrix(matrixLike, name, fallbackScale) {
-      if (!Array.isArray(matrixLike) || matrixLike.length !== 16) return null;
-      const m = new THREE.Matrix4();
-      m.fromArray(matrixLike);
-      const p = new THREE.Vector3();
-      const q = new THREE.Quaternion();
-      const s = new THREE.Vector3();
-      m.decompose(p, q, s);
-      const qObj = { x: q.x, y: q.y, z: q.z, w: q.w };
-      if (lastStableQuat) {
-        const dot = q.x * lastStableQuat.x + q.y * lastStableQuat.y + q.z * lastStableQuat.z + q.w * lastStableQuat.w;
-        if (dot < 0) {
-          qObj.x *= -1; qObj.y *= -1; qObj.z *= -1; qObj.w *= -1;
-        }
-      }
-      lastStableQuat = { ...qObj };
-      return {
-        position: { x: p.x, y: p.y, z: p.z },
-        rotation: qObj,
-        scale: Math.max(s.x || fallbackScale || 1, 0.0001),
-        name: name || "marker"
-      };
-    }
-
-    function toMarker(payload) {
-      if (!payload) return null;
-      const candidate = payload.image || payload.target || payload;
-      const matrixCandidate = candidate.transform || candidate.matrix || payload.transform || payload.matrix;
-      const byMatrix = markerFromMatrix(matrixCandidate, candidate.name || payload.name, candidate.scale ?? payload.scale ?? 1);
-      if (byMatrix) return byMatrix;
-      const position = candidate.position || payload.position || null;
-      const rotation = candidate.rotation || payload.rotation || null;
-      if (!position || !rotation) return null;
-      const qObj = { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w };
-      if (lastStableQuat) {
-        const dot = qObj.x * lastStableQuat.x + qObj.y * lastStableQuat.y + qObj.z * lastStableQuat.z + qObj.w * lastStableQuat.w;
-        if (dot < 0) {
-          qObj.x *= -1; qObj.y *= -1; qObj.z *= -1; qObj.w *= -1;
-        }
-      }
-      lastStableQuat = { ...qObj };
-      return {
-        position,
-        rotation: qObj,
-        scale: candidate.scale ?? payload.scale ?? 1,
-        name: candidate.name || payload.name || "marker"
-      };
     }
 
     function installBridge() {
       if (!window.XR8) return;
       XR8.addCameraPipelineModule({
-        name: "bridge-exporter-v3",
-        listeners: [
-          {
-            event: "reality.imagefound",
-            process: (evt) => {
-              const marker = toMarker(evt?.detail || evt);
-              if (!marker) return;
-              lastEventPoseTs = performance.now();
-              updateTracking(marker, "tracking", "event", "reality.imagefound");
-            }
-          },
-          {
-            event: "reality.imageupdated",
-            process: (evt) => {
-              const marker = toMarker(evt?.detail || evt);
-              if (!marker) return;
-              lastEventPoseTs = performance.now();
-              updateTracking(marker, "tracking", "event", "reality.imageupdated");
-            }
-          },
-          {
-            event: "reality.imagelost",
-            process: () => {
-              // Mantener última pose para preservar persistencia visual vía VIO
-              updateTracking(window.Tracking.marker, "lost", "event", "reality.imagelost");
-            }
+        name: "bridge-exporter-v5",
+        onUpdate: ({ processCpuResult }) => {
+          const reality = processCpuResult?.reality;
+          if (!reality) return;
+          const img = reality?.detectedImages?.[0];
+          const camera = { rotation: reality?.rotation || null, position: reality?.position || null };
+          const intrinsics = reality?.intrinsics || null;
+          const tracking = reality?.trackingStatus || "unknown";
+          if (img && img.position && img.rotation) {
+            const marker = { position: img.position, rotation: img.rotation, scale: img.scale || 1, name: img.name || "marker" };
+            updateTracking(marker, tracking, "onUpdate", "reality.detectedImages", camera, intrinsics);
+          } else if (window.Tracking.tracking !== "waiting") {
+            updateTracking(window.Tracking.marker, tracking, "onUpdate", "no-marker", camera, intrinsics);
           }
-        ]
+        }
       });
     }
 
@@ -196,7 +123,7 @@
       out += "SOURCE: " + window.Tracking.source + "\n";
       out += "EVENT: " + window.Tracking.lastEvent + "\n";
       out += "SCALE: " + s + "\n";
-      out += "POSE_AGE: " + (lastPoseTs ? Math.round(performance.now() - lastPoseTs) + "ms" : "-") + "\n";
+      out += "MARKER: " + (window.Tracking.marker ? "YES" : "NO") + "\n";
       const v = document.querySelector("video");
       out += "VIDEO: " + (v ? "YES" : "NO");
       panel.textContent = out;
@@ -209,7 +136,6 @@
     let envInterval = null, arIntervalId = null, xrLoadPromise = null;
     let envTexture = null, envCanvas = null, video = null;
     let markerFound = false, scanOverlay = null;
-    let snapFramesLeft = 0;
 
     function loadScript({ id, src, async = false, attrs = {} }) {
       if (document.getElementById(id)) return;
@@ -219,10 +145,11 @@
       document.body.appendChild(s);
     }
 
-    // FIX 2: solo runtime y xr — bridge y xr-config ya están inlineados arriba
+    // Clean-repo style boot: runtime + xr + landing page
     function loadXR8Assets() {
       loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
-      loadScript({ id: "xrScript", src: "./external/xr/xr.js", async: true, attrs: { "data-preload-chunks": "face, slam" } });
+      loadScript({ id: "xrScript", src: "https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js", async: true, attrs: { crossorigin: "anonymous", "data-preload-chunks": "slam" } });
+      loadScript({ id: "landingPageScript", src: "https://cdn.jsdelivr.net/npm/@8thwall/landing-page@1/dist/landing-page.js", attrs: { crossorigin: "anonymous" } });
     }
 
     function waitForXR8() {
@@ -272,35 +199,18 @@
           const hasMarker = marker && marker.position && marker.rotation;
           if (!markerFound && hasMarker) {
             markerFound = true;
-            snapFramesLeft = 8;
             const model = document.getElementById("aframeModel");
             if (model) model.setAttribute("visible", true);
             if (scanOverlay) scanOverlay.style.display = "none";
           }
-          if (window.RepoFusion.pose.tracking === "tracking" && hasMarker && snapFramesLeft === 0 && (performance.now() - lastEventPoseTs) < 120) {
-            snapFramesLeft = 2;
-          }
           if (!hasMarker) return;
           const targetPosition = new THREE.Vector3(marker.position.x, marker.position.y, marker.position.z);
+          root.object3D.position.lerp(targetPosition, 0.35);
           const targetQuat = new THREE.Quaternion(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
-          if (lastStableQuat) {
-            const dot = targetQuat.x * lastStableQuat.x + targetQuat.y * lastStableQuat.y + targetQuat.z * lastStableQuat.z + targetQuat.w * lastStableQuat.w;
-            if (dot < 0) targetQuat.set(-targetQuat.x, -targetQuat.y, -targetQuat.z, -targetQuat.w);
-          }
+          root.object3D.quaternion.slerp(targetQuat, 0.35);
           const targetScale = Math.max(marker.scale || 1, 0.0001) * 8;
-          const currentScale = root.object3D.scale.x || targetScale;
-
-          if (snapFramesLeft > 0) {
-            root.object3D.position.copy(targetPosition);
-            root.object3D.quaternion.copy(targetQuat);
-            root.object3D.scale.setScalar(targetScale);
-            snapFramesLeft -= 1;
-          } else {
-            root.object3D.position.lerp(targetPosition, 0.55);
-            root.object3D.quaternion.slerp(targetQuat, 0.6);
-            const boundedScale = THREE.MathUtils.clamp(targetScale, currentScale * 0.8, currentScale * 1.25);
-            root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, boundedScale, 0.5));
-          }
+          const currentScale = root.object3D.scale.x || 1;
+          root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.35));
         }, 30);
 
         pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
@@ -358,7 +268,17 @@
 
     function startAR(modelSrc) {
       loadXR8Assets();
-      return waitForXR8().then(() => createARScene(modelSrc));
+      return waitForXR8().then(() => {
+        configureXR8Targets();
+        if (window.XR8 && window.LandingPage) {
+          try {
+            XR8.addCameraPipelineModule(LandingPage.pipelineModule());
+          } catch (_) {
+            // no-op
+          }
+        }
+        return createARScene(modelSrc);
+      });
     }
 
     window.toggleEnv = function() {
