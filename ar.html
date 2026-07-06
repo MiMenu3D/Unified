@@ -20,13 +20,11 @@
   <script>
     // === FIX 1: RepoFusion completo, incluyendo setPose ===
     window.RepoFusion = {};
-    window.RepoFusion.pose = { camera: null, marker: null, intrinsics: null, tracking: "waiting" };
+    window.RepoFusion.pose = { marker: null, tracking: "waiting" };
     window.RepoFusion.setPose = function(data) {
       if (!data) return;
-      window.RepoFusion.pose.camera    = data.camera    || null;
-      window.RepoFusion.pose.marker    = data.marker    || null;
-      window.RepoFusion.pose.intrinsics = data.intrinsics || null;
-      window.RepoFusion.pose.tracking  = data.tracking  || "unknown";
+      window.RepoFusion.pose.marker   = data.marker   || null;
+      window.RepoFusion.pose.tracking = data.tracking || "unknown";
     };
 
     // === xr-config (inlineado) ===
@@ -36,6 +34,7 @@
         properties: { top: 0, left: 312, width: 1875, height: 2500, isRotated: false, originalWidth: 2500, originalHeight: 2500 },
         imagePath: "image-targets/marker_luminance.png",
         metadata: null,
+        physicalWidthInMeters: 0.115,
         name: "marker",
         resources: {
           originalImage: "marker_original.png",
@@ -59,8 +58,8 @@
       window.addEventListener("XRloaded", configureXR8Targets, { once: true });
     }
 
-    // === Bridge (inlineado) ===
-    const BRIDGE_VERSION = "Bridge Handmade Unified v1.4";
+    // === Bridge v2.0 (event-based — datos post-corrección de XrController) ===
+    const BRIDGE_VERSION = "Bridge v2.0";
     const panel = document.createElement("div");
     panel.id = "bridgeDebugPanel";
     panel.style.cssText = "position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.85);color:lime;padding:10px;font-family:monospace;font-size:12px;white-space:pre;z-index:999999;max-height:85vh;overflow:auto;cursor:pointer;";
@@ -73,48 +72,38 @@
     };
     document.body.appendChild(panel);
 
-    window.Tracking = { camera: null, marker: null, intrinsics: null, tracking: "waiting" };
+    window.Tracking = { marker: null, tracking: "waiting" };
 
-    function normalizeMarker(reality) {
-      const img = reality?.detectedImages?.[0];
-      if (!img) return null;
-      return { position: img.position || null, rotation: img.rotation || null, scale: img.scale || 1, name: img.name };
-    }
-    function extractCamera(reality) {
-      return { rotation: reality?.rotation || null, position: reality?.position || null };
-    }
-    function installBridge() {
-      if (!window.XR8) { panel.textContent = BRIDGE_VERSION + "\nXR8 not found"; return; }
-      XR8.addCameraPipelineModule({
-        name: "bridge-exporter",
-        onUpdate: ({ processCpuResult }) => {
-          const reality = processCpuResult?.reality;
-          if (!reality) return;
-          window.Tracking.camera     = extractCamera(reality);
-          window.Tracking.marker     = normalizeMarker(reality);
-          window.Tracking.intrinsics = reality.intrinsics || null;
-          window.Tracking.tracking   = reality.trackingStatus || "unknown";
-          if (window.RepoFusion && window.RepoFusion.setPose) {
-            window.RepoFusion.setPose({
-              camera:     window.Tracking.camera,
-              marker:     window.Tracking.marker,
-              intrinsics: window.Tracking.intrinsics,
-              tracking:   window.Tracking.tracking
-            });
-          }
-        }
-      });
-      panel.textContent = BRIDGE_VERSION + "\ninstalled ✔";
-    }
-    if (window.XR8) { installBridge(); }
-    else { window.addEventListener("xrloaded", installBridge, { once: true }); }
+    // Misma fuente de datos que el ECS de 8th Wall: eventos post-intrinsics de XrController
+    window.addEventListener("reality.imagefound", (e) => {
+      const { name, position, rotation, scale } = e.detail;
+      if (name !== "marker") return;
+      window.Tracking.marker = { position, rotation, scale, name };
+      window.Tracking.tracking = "tracking";
+      if (window.RepoFusion && window.RepoFusion.setPose)
+        window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: "tracking" });
+    });
+
+    window.addEventListener("reality.imageupdated", (e) => {
+      const { name, position, rotation, scale } = e.detail;
+      if (name !== "marker") return;
+      window.Tracking.marker = { position, rotation, scale, name };
+      window.Tracking.tracking = "tracking";
+      if (window.RepoFusion && window.RepoFusion.setPose)
+        window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: "tracking" });
+    });
+
+    window.addEventListener("reality.imagelost", () => {
+      window.Tracking.tracking = "lost";
+      // Conservar última posición conocida → preserva el "SLAM accidental" vía VIO
+      if (window.RepoFusion && window.RepoFusion.setPose)
+        window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: "lost" });
+    });
 
     function renderBridge() {
       let out = BRIDGE_VERSION + "\n\n";
-      out += "TRACKING: "    + window.Tracking.tracking + "\n\n";
-      out += "CAMERA:\n"     + JSON.stringify(window.Tracking.camera,     null, 2) + "\n\n";
-      out += "MARKER:\n"     + JSON.stringify(window.Tracking.marker,     null, 2) + "\n\n";
-      out += "INTRINSICS:\n" + JSON.stringify(window.Tracking.intrinsics, null, 2) + "\n\n";
+      out += "TRACKING: " + window.Tracking.tracking + "\n\n";
+      out += "MARKER:\n" + JSON.stringify(window.Tracking.marker, null, 2) + "\n\n";
       const v = document.querySelector("video");
       out += "VIDEO: " + (v ? "YES" : "NO");
       panel.textContent = out;

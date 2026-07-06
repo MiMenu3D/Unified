@@ -1,4 +1,4 @@
-// 8th Wall image target configuration - Over Success04-Copilot 1.05
+// 8th Wall image target configuration - Over Success04-Copilot 2.00
 // Only configure the tracker, do not auto-start the 8th Wall scene.
 window.xrConfigData = {
   imageTargetData: [
@@ -15,6 +15,7 @@ window.xrConfigData = {
       },
       imagePath: "image-targets/marker_luminance.png",
       metadata: null,
+      physicalWidthInMeters: 0.115,
       name: "marker",
       resources: {
         originalImage: "marker_original.png",
