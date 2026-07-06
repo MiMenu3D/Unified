@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 2.01</title>
+  <title>AR Over Success04-Copilot 2.02</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -75,8 +75,7 @@
     window.Tracking = { marker: null, tracking: "waiting", source: "none", lastEvent: "none" };
 
     function updateTracking(marker, tracking, source, eventName) {
-      if (!marker) return;
-      window.Tracking.marker = marker;
+      window.Tracking.marker = marker || window.Tracking.marker;
       window.Tracking.tracking = tracking;
       window.Tracking.source = source;
       window.Tracking.lastEvent = eventName;
@@ -85,75 +84,80 @@
       }
     }
 
-    // Soporta distintos formatos de payload en los eventos de XR8
-    function extractMarkerFromDetail(detail) {
-      if (!detail) return null;
-      const candidate = detail.image || detail.target || detail;
-      const position = candidate.position || detail.position || null;
-      const rotation = candidate.rotation || detail.rotation || null;
-      const scale = candidate.scale ?? detail.scale ?? 1;
-      const name = candidate.name || detail.name || "marker";
+    function toMarker(payload) {
+      if (!payload) return null;
+      const candidate = payload.image || payload.target || payload;
+      const position = candidate.position || payload.position || null;
+      const rotation = candidate.rotation || payload.rotation || null;
       if (!position || !rotation) return null;
-      return { position, rotation, scale, name };
+      return {
+        position,
+        rotation,
+        scale: candidate.scale ?? payload.scale ?? 1,
+        name: candidate.name || payload.name || "marker"
+      };
     }
 
-    // Fuente preferida: eventos post-corrección de XrController (misma familia que ECS)
-    window.addEventListener("reality.imagefound", (e) => {
-      const marker = extractMarkerFromDetail(e.detail);
-      if (!marker) return;
-      updateTracking(marker, "tracking", "event", "reality.imagefound");
-    });
-
-    window.addEventListener("reality.imageupdated", (e) => {
-      const marker = extractMarkerFromDetail(e.detail);
-      if (!marker) return;
-      updateTracking(marker, "tracking", "event", "reality.imageupdated");
-    });
-
-    window.addEventListener("reality.imagelost", () => {
-      window.Tracking.tracking = "lost";
-      window.Tracking.source = "event";
-      window.Tracking.lastEvent = "reality.imagelost";
-      // Conservar última pose para mantener persistencia visual vía VIO
-      if (window.RepoFusion && window.RepoFusion.setPose) {
-        window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: "lost" });
-      }
-    });
-
-    // Fallback: si los eventos no traen payload usable, usamos onUpdate para no quedarnos en null
-    function installBridgeFallback() {
+    function installBridge() {
       if (!window.XR8) return;
       XR8.addCameraPipelineModule({
-        name: "bridge-fallback-exporter",
+        name: "bridge-exporter-v3",
+        listeners: [
+          {
+            event: "reality.imagefound",
+            process: ({ detail }) => {
+              const marker = toMarker(detail);
+              if (!marker) return;
+              updateTracking(marker, "tracking", "event", "reality.imagefound");
+            }
+          },
+          {
+            event: "reality.imageupdated",
+            process: ({ detail }) => {
+              const marker = toMarker(detail);
+              if (!marker) return;
+              updateTracking(marker, "tracking", "event", "reality.imageupdated");
+            }
+          },
+          {
+            event: "reality.imagelost",
+            process: () => {
+              // Mantener última pose para preservar persistencia visual vía VIO
+              updateTracking(window.Tracking.marker, "lost", "event", "reality.imagelost");
+            }
+          }
+        ],
         onUpdate: ({ processCpuResult }) => {
+          // Fallback de bajo coste si por cualquier razón no llegan eventos utilizables
           const reality = processCpuResult?.reality;
           const img = reality?.detectedImages?.[0];
-          if (!img || !img.position || !img.rotation) return;
-          const marker = {
-            position: img.position,
-            rotation: img.rotation,
-            scale: img.scale || 1,
-            name: img.name || "marker"
-          };
-          updateTracking(marker, reality?.trackingStatus || "tracking", "fallback", "onUpdate");
+          if (img && img.position && img.rotation) {
+            const marker = { position: img.position, rotation: img.rotation, scale: img.scale || 1, name: img.name || "marker" };
+            updateTracking(marker, reality?.trackingStatus || "tracking", "fallback", "onUpdate");
+          } else if (window.Tracking.tracking === "tracking") {
+            updateTracking(window.Tracking.marker, "lost", window.Tracking.source, "lost-by-onUpdate");
+          }
         }
       });
     }
 
-    if (window.XR8) installBridgeFallback();
-    else window.addEventListener("xrloaded", installBridgeFallback, { once: true });
+    if (window.XR8) installBridge();
+    else window.addEventListener("xrloaded", installBridge, { once: true });
 
     function renderBridge() {
+      const m = window.Tracking.marker;
+      const s = m ? Number(m.scale || 0).toFixed(4) : "-";
       let out = BRIDGE_VERSION + "\n\n";
-      out += "TRACKING: " + window.Tracking.tracking + "\n\n";
+      out += "TRACKING: " + window.Tracking.tracking + "\n";
       out += "SOURCE: " + window.Tracking.source + "\n";
-      out += "EVENT: " + window.Tracking.lastEvent + "\n\n";
-      out += "MARKER:\n" + JSON.stringify(window.Tracking.marker, null, 2) + "\n\n";
+      out += "EVENT: " + window.Tracking.lastEvent + "\n";
+      out += "SCALE: " + s + "\n";
+      out += "HAS_MARKER: " + (m ? "YES" : "NO") + "\n";
       const v = document.querySelector("video");
       out += "VIDEO: " + (v ? "YES" : "NO");
       panel.textContent = out;
     }
-    setInterval(renderBridge, 150);
+    setInterval(renderBridge, 350);
 
     // === AR engine ===
     let originalEnv = null, cameraEnv = null, envMode = "hdr";
