@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 1.05</title>
+  <title>AR Over Success04-Copilot 2.01</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -72,37 +72,82 @@
     };
     document.body.appendChild(panel);
 
-    window.Tracking = { marker: null, tracking: "waiting" };
+    window.Tracking = { marker: null, tracking: "waiting", source: "none", lastEvent: "none" };
 
-    // Misma fuente de datos que el ECS de 8th Wall: eventos post-intrinsics de XrController
+    function updateTracking(marker, tracking, source, eventName) {
+      if (!marker) return;
+      window.Tracking.marker = marker;
+      window.Tracking.tracking = tracking;
+      window.Tracking.source = source;
+      window.Tracking.lastEvent = eventName;
+      if (window.RepoFusion && window.RepoFusion.setPose) {
+        window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: tracking });
+      }
+    }
+
+    // Soporta distintos formatos de payload en los eventos de XR8
+    function extractMarkerFromDetail(detail) {
+      if (!detail) return null;
+      const candidate = detail.image || detail.target || detail;
+      const position = candidate.position || detail.position || null;
+      const rotation = candidate.rotation || detail.rotation || null;
+      const scale = candidate.scale ?? detail.scale ?? 1;
+      const name = candidate.name || detail.name || "marker";
+      if (!position || !rotation) return null;
+      return { position, rotation, scale, name };
+    }
+
+    // Fuente preferida: eventos post-corrección de XrController (misma familia que ECS)
     window.addEventListener("reality.imagefound", (e) => {
-      const { name, position, rotation, scale } = e.detail;
-      if (name !== "marker") return;
-      window.Tracking.marker = { position, rotation, scale, name };
-      window.Tracking.tracking = "tracking";
-      if (window.RepoFusion && window.RepoFusion.setPose)
-        window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: "tracking" });
+      const marker = extractMarkerFromDetail(e.detail);
+      if (!marker) return;
+      updateTracking(marker, "tracking", "event", "reality.imagefound");
     });
 
     window.addEventListener("reality.imageupdated", (e) => {
-      const { name, position, rotation, scale } = e.detail;
-      if (name !== "marker") return;
-      window.Tracking.marker = { position, rotation, scale, name };
-      window.Tracking.tracking = "tracking";
-      if (window.RepoFusion && window.RepoFusion.setPose)
-        window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: "tracking" });
+      const marker = extractMarkerFromDetail(e.detail);
+      if (!marker) return;
+      updateTracking(marker, "tracking", "event", "reality.imageupdated");
     });
 
     window.addEventListener("reality.imagelost", () => {
       window.Tracking.tracking = "lost";
-      // Conservar última posición conocida → preserva el "SLAM accidental" vía VIO
-      if (window.RepoFusion && window.RepoFusion.setPose)
+      window.Tracking.source = "event";
+      window.Tracking.lastEvent = "reality.imagelost";
+      // Conservar última pose para mantener persistencia visual vía VIO
+      if (window.RepoFusion && window.RepoFusion.setPose) {
         window.RepoFusion.setPose({ marker: window.Tracking.marker, tracking: "lost" });
+      }
     });
+
+    // Fallback: si los eventos no traen payload usable, usamos onUpdate para no quedarnos en null
+    function installBridgeFallback() {
+      if (!window.XR8) return;
+      XR8.addCameraPipelineModule({
+        name: "bridge-fallback-exporter",
+        onUpdate: ({ processCpuResult }) => {
+          const reality = processCpuResult?.reality;
+          const img = reality?.detectedImages?.[0];
+          if (!img || !img.position || !img.rotation) return;
+          const marker = {
+            position: img.position,
+            rotation: img.rotation,
+            scale: img.scale || 1,
+            name: img.name || "marker"
+          };
+          updateTracking(marker, reality?.trackingStatus || "tracking", "fallback", "onUpdate");
+        }
+      });
+    }
+
+    if (window.XR8) installBridgeFallback();
+    else window.addEventListener("xrloaded", installBridgeFallback, { once: true });
 
     function renderBridge() {
       let out = BRIDGE_VERSION + "\n\n";
       out += "TRACKING: " + window.Tracking.tracking + "\n\n";
+      out += "SOURCE: " + window.Tracking.source + "\n";
+      out += "EVENT: " + window.Tracking.lastEvent + "\n\n";
       out += "MARKER:\n" + JSON.stringify(window.Tracking.marker, null, 2) + "\n\n";
       const v = document.querySelector("video");
       out += "VIDEO: " + (v ? "YES" : "NO");
