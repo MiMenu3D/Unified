@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 2.03</title>
+  <title>AR Over Success04-Copilot 2.04</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -156,6 +156,8 @@
       out += "SOURCE: " + window.Tracking.source + "\n";
       out += "EVENT: " + window.Tracking.lastEvent + "\n";
       out += "SCALE: " + s + "\n";
+      out += "XR_BOOT: " + xrBootState.status + " (" + xrBootState.source + ")\n";
+      out += "XR8: " + (window.XR8 ? "YES" : "NO") + "\n";
       const v = document.querySelector("video");
       out += "VIDEO: " + (v ? "YES" : "NO");
       panel.textContent = out;
@@ -168,31 +170,94 @@
     let envInterval = null, arIntervalId = null, xrLoadPromise = null;
     let envTexture = null, envCanvas = null, video = null;
     let markerFound = false, scanOverlay = null;
+    let xrBootState = { status: "idle", source: "none" };
 
-    function loadScript({ id, src, async = false, attrs = {} }) {
-      if (document.getElementById(id)) return;
-      const s = document.createElement("script");
-      s.id = id; s.src = src; s.async = async;
-      Object.entries(attrs).forEach(([k, v]) => s.setAttribute(k, v));
-      document.body.appendChild(s);
+    function loadScriptOnce({ id, src, async = false, attrs = {} }) {
+      return new Promise((resolve, reject) => {
+        const existing = document.getElementById(id);
+        if (existing) {
+          if (existing.dataset.loaded === "1") { resolve("already"); return; }
+          existing.addEventListener("load", () => {
+            existing.dataset.loaded = "1";
+            resolve("loaded");
+          }, { once: true });
+          existing.addEventListener("error", () => reject(new Error("Script failed: " + src)), { once: true });
+          return;
+        }
+        const s = document.createElement("script");
+        s.id = id;
+        s.src = src;
+        s.async = async;
+        Object.entries(attrs).forEach(([k, v]) => s.setAttribute(k, v));
+        s.addEventListener("load", () => {
+          s.dataset.loaded = "1";
+          resolve("loaded");
+        }, { once: true });
+        s.addEventListener("error", () => reject(new Error("Script failed: " + src)), { once: true });
+        document.body.appendChild(s);
+      });
     }
 
-    // FIX 2: solo runtime y xr — bridge y xr-config ya están inlineados arriba
-    function loadXR8Assets() {
-      loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
-      loadScript({ id: "xrScript", src: "./external/xr/xr.js", async: true, attrs: { "data-preload-chunks": "face, slam" } });
+    function timeoutReject(ms, label) {
+      return new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(label + " timeout")), ms);
+      });
     }
 
-    function waitForXR8() {
+    // FIX 2: arranque robusto (CDN primero, local si falla)
+    async function loadXR8Assets() {
+      if (window.XR8) {
+        xrBootState = { status: "ready", source: "already" };
+        return "already";
+      }
+
+      xrBootState = { status: "loading-runtime", source: "none" };
+      await loadScriptOnce({ id: "runtimeScript", src: "./external/runtime/runtime.js", attrs: { crossorigin: "anonymous" } });
+
+      try {
+        xrBootState = { status: "loading-cdn", source: "cdn" };
+        await Promise.race([
+          loadScriptOnce({
+            id: "xrScriptCdn",
+            src: "https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js",
+            async: true,
+            attrs: { crossorigin: "anonymous", "data-preload-chunks": "slam" }
+          }).then(() => waitForXR8(7000)),
+          timeoutReject(9000, "xr-cdn")
+        ]);
+        xrBootState = { status: "ready", source: "cdn" };
+        return "cdn";
+      } catch (_) {
+        xrBootState = { status: "loading-local", source: "local" };
+      }
+
+      await loadScriptOnce({
+        id: "xrScriptLocal",
+        src: "./external/xr/xr.js",
+        async: true,
+        attrs: { "data-preload-chunks": "face, slam" }
+      });
+      await waitForXR8(9000);
+      xrBootState = { status: "ready", source: "local" };
+      return "local";
+    }
+
+    function waitForXR8(timeoutMs = 0) {
+      if (window.XR8) return Promise.resolve(window.XR8);
+
       if (!xrLoadPromise) {
         xrLoadPromise = new Promise((resolve) => {
-          if (window.XR8) { resolve(window.XR8); return; }
           const cb = () => resolve(window.XR8);
           window.addEventListener("xrloaded", cb, { once: true });
           window.addEventListener("XRloaded", cb, { once: true });
         });
       }
-      return xrLoadPromise;
+
+      if (!timeoutMs) return xrLoadPromise;
+      return Promise.race([
+        xrLoadPromise,
+        timeoutReject(timeoutMs, "XR8 ready")
+      ]);
     }
 
     function createARScene(modelSrc) {
@@ -298,8 +363,15 @@
     }
 
     function startAR(modelSrc) {
-      loadXR8Assets();
-      return waitForXR8().then(() => createARScene(modelSrc));
+      return loadXR8Assets()
+        .then(() => createARScene(modelSrc))
+        .catch((err) => {
+          xrBootState = { status: "error", source: xrBootState.source };
+          window.Tracking.lastEvent = "xr-boot-error";
+          window.Tracking.source = "boot";
+          console.error("XR boot failed:", err);
+          throw err;
+        });
     }
 
     window.toggleEnv = function() {
