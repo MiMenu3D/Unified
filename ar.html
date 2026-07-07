@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 3.10</title>
+  <title>AR Over Success04-Copilot 3.11</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -28,38 +28,6 @@
       window.RepoFusion.pose.intrinsics = data.intrinsics || window.RepoFusion.pose.intrinsics || null;
       window.RepoFusion.pose.tracking = data.tracking || "unknown";
     };
-
-    // === xr-config (inlineado) ===
-    window.xrConfigData = {
-      imageTargetData: [{
-        type: "PLANAR",
-        properties: { top: 0, left: 312, width: 1875, height: 2500, isRotated: false, originalWidth: 2500, originalHeight: 2500 },
-        imagePath: "image-targets/marker_luminance.png",
-        metadata: null,
-        physicalWidthInMeters: 0.115,
-        loadAutomatically: true,
-        name: "marker",
-        resources: {
-          originalImage: "marker_original.png",
-          croppedImage: "marker_cropped.png",
-          thumbnailImage: "marker_thumbnail.png",
-          luminanceImage: "marker_luminance.png"
-        },
-        created: 1781091877698,
-        updated: 1781091877698
-      }]
-    };
-
-    function configureXR8Targets() {
-      if (window.XR8 && window.XR8.XrController && typeof window.XR8.XrController.configure === "function") {
-        window.XR8.XrController.configure(window.xrConfigData);
-      }
-    }
-    if (window.XR8) { configureXR8Targets(); }
-    else {
-      window.addEventListener("xrloaded", configureXR8Targets, { once: true });
-      window.addEventListener("XRloaded", configureXR8Targets, { once: true });
-    }
 
     // === Bridge v5.0 (onUpdate-only, clean-repo style) ===
     const BRIDGE_VERSION = "Bridge v5.0";
@@ -147,9 +115,10 @@
 
     // Clean-repo style boot: runtime + xr + landing page
     function loadXR8Assets() {
-      loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
+      loadScript({ id: "runtimeScript", src: "./Repositorio%208th%20Wall/external/runtime/runtime.js" });
       loadScript({ id: "xrScript", src: "https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js", async: true, attrs: { crossorigin: "anonymous", "data-preload-chunks": "slam" } });
       loadScript({ id: "landingPageScript", src: "https://cdn.jsdelivr.net/npm/@8thwall/landing-page@1/dist/landing-page.js", attrs: { crossorigin: "anonymous" } });
+      loadScript({ id: "bundleCleanScript", src: "./bundle-clean.js" });
     }
 
     function waitForXR8() {
@@ -269,14 +238,6 @@
     function startAR(modelSrc) {
       loadXR8Assets();
       return waitForXR8().then(() => {
-        configureXR8Targets();
-        if (window.XR8 && window.LandingPage) {
-          try {
-            XR8.addCameraPipelineModule(LandingPage.pipelineModule());
-          } catch (_) {
-            // no-op
-          }
-        }
         return createARScene(modelSrc);
       });
     }
