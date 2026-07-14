@@ -217,7 +217,7 @@
               smoothed += (brightness - smoothed) * 0.08;
               const exposure = 0.8 + (smoothed / 255) * 0.9;
               if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
-            }, 250);
+            }, 150);
           }
         }, 500);
 
