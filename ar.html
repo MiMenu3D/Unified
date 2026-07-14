@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 3.12</title>
+  <title>AR Over Success04-Continue 3.21</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -182,8 +182,19 @@
           root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.35));
         }, 30);
 
-        pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
+                pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
         pmremGenerator.compileEquirectangularShader();
+
+        // Carga segura del HDR independiente
+        function loadEnvironmentHDR() {
+          new THREE.RGBELoader()
+            .load("HDR/terrace_sea.hdr", (hdr) => {
+              hdr.mapping = THREE.EquirectangularReflectionMapping;
+              originalEnv = hdr;
+              if (envMode === "hdr") sceneEl.object3D.environment = hdr;
+            }, undefined, (err) => console.warn("HDR no cargado, modo CAM libre"));
+        }
+        loadEnvironmentHDR();
 
         const waitForVideo = setInterval(() => {
           const candidate = document.querySelector("video");
@@ -221,11 +232,7 @@
           }
         }, 500);
 
-        new THREE.RGBELoader().load("HDR/terrace_sea.hdr", (hdr) => {
-          hdr.mapping = THREE.EquirectangularReflectionMapping;
-          originalEnv = hdr;
-          sceneEl.object3D.environment = hdr;
-        });
+                /* HDR ya cargado arriba de forma segura */
 
         if (sceneEl.renderer) sceneEl.renderer.setClearColor(0x000000, 0);
         sceneEl.setAttribute("background", "color: transparent");
