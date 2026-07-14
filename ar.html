@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 3.28</title>
+  <title>AR Over Success04-Copilot 3.29</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -205,13 +205,13 @@
               if (!video || video.readyState < 2) return;
               ctx.drawImage(video, 0, 0, 32, 32);
               envTexture.needsUpdate = true;
-                                    if (pmremGenerator) {
-                            if (cameraRT) cameraRT.dispose();
-                            cameraRT = pmremGenerator.fromEquirectangular(envTexture);
-                            // Asignar el environment solo si estamos en modo CAM
-                            if (envMode === "cam") {
-                                sceneEl.object3D.environment = cameraRT.texture;
-                            }
+                                            if (pmremGenerator) {
+                                    if (cameraRT) cameraRT.dispose();
+                                    cameraRT = pmremGenerator.fromEquirectangular(envTexture);
+                                    // Asignar el environment solo si estamos en modo CAM
+                                    if (envMode === "cam") {
+                                        sceneEl.object3D.environment = cameraRT.texture;
+                                    }
           }
               const pixels = ctx.getImageData(0, 0, 32, 32).data;
               let total = 0;
