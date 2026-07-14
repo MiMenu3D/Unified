@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Continue 3.22</title>
+  <title>AR Over Success04-Continue 3.23</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -253,15 +253,18 @@
       const scene = document.querySelector("a-scene");
       const btn = document.getElementById("envToggle");
       if (!scene) return;
-      if (envMode === "hdr") {
-        if (cameraRT) scene.object3D.environment = cameraRT.texture;
+            if (envMode === "hdr") {
+        // Cambiamos a CAM: Forzamos la limpieza absoluta del HDR
+        scene.object3D.environment = null;
         envMode = "cam";
         if (btn) btn.innerText = "Env: CAM";
       } else if (envMode === "cam") {
+        // Cambiamos a OFF
         scene.object3D.environment = null;
         envMode = "off";
         if (btn) btn.innerText = "Env: OFF";
       } else {
+        // Cambiamos a HDR: Restauramos el original
         scene.object3D.environment = originalEnv;
         envMode = "hdr";
         if (btn) btn.innerText = "Env: HDR";
