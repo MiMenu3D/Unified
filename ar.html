@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 3.25</title>
+  <title>AR Over Success04-Copilot 3.26</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -205,10 +205,11 @@
               if (!video || video.readyState < 2) return;
               ctx.drawImage(video, 0, 0, 32, 32);
               envTexture.needsUpdate = true;
-              if (pmremGenerator) {
+                            if (pmremGenerator) {
                 if (cameraRT) cameraRT.dispose();
                 cameraRT = pmremGenerator.fromEquirectangular(envTexture);
-                if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
+                // Solo asigna si el modo es CAM. Si no, se generará pero no se aplicará inmediatamente.
+                                // Ya no asignamos directamente aquí. toggleEnv lo manejará.
               }
               const pixels = ctx.getImageData(0, 0, 32, 32).data;
               let total = 0;
@@ -224,6 +225,7 @@
                 new THREE.RGBELoader().load("HDR/terrace_sea.hdr", (hdr) => {
           hdr.mapping = THREE.EquirectangularReflectionMapping;
           originalEnv = hdr;
+          sceneEl.object3D.environment = hdr;
         });
 
         if (sceneEl.renderer) sceneEl.renderer.setClearColor(0x000000, 0);
