@@ -187,7 +187,7 @@
 
                 // HDR y CAM comparten el mismo refresco para asegurar continuidad
         const loadHDR = () => {
-          new THREE.RGBELoader().load("HDR/terrace_sea.hdr", (hdr) => {
+          new THREE.RGBELoader().load("terrace_sea.hdr", (hdr) => {
             hdr.mapping = THREE.EquirectangularReflectionMapping;
             originalEnv = hdr;
             if (envMode === "hdr") sceneEl.object3D.environment = hdr;
