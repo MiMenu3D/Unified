@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Continue 3.21</title>
+  <title>AR Over Success04-Continue 3.22</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -185,16 +185,15 @@
                 pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
         pmremGenerator.compileEquirectangularShader();
 
-        // Carga segura del HDR independiente
-        function loadEnvironmentHDR() {
-          new THREE.RGBELoader()
-            .load("HDR/terrace_sea.hdr", (hdr) => {
-              hdr.mapping = THREE.EquirectangularReflectionMapping;
-              originalEnv = hdr;
-              if (envMode === "hdr") sceneEl.object3D.environment = hdr;
-            }, undefined, (err) => console.warn("HDR no cargado, modo CAM libre"));
-        }
-        loadEnvironmentHDR();
+                // HDR y CAM comparten el mismo refresco para asegurar continuidad
+        const loadHDR = () => {
+          new THREE.RGBELoader().load("HDR/terrace_sea.hdr", (hdr) => {
+            hdr.mapping = THREE.EquirectangularReflectionMapping;
+            originalEnv = hdr;
+            if (envMode === "hdr") sceneEl.object3D.environment = hdr;
+          });
+        };
+        loadHDR();
 
         const waitForVideo = setInterval(() => {
           const candidate = document.querySelector("video");
@@ -216,9 +215,10 @@
               if (!video || video.readyState < 2) return;
               ctx.drawImage(video, 0, 0, 32, 32);
               envTexture.needsUpdate = true;
-              if (pmremGenerator) {
+                            if (pmremGenerator) {
                 if (cameraRT) cameraRT.dispose();
                 cameraRT = pmremGenerator.fromEquirectangular(envTexture);
+                // Si es CAM, forzamos la actualización inmediata del environment
                 if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
               }
               const pixels = ctx.getImageData(0, 0, 32, 32).data;
