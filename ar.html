@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 3.31</title>
+  <title>AR Over Success04-Copilot 3.40</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -228,6 +228,8 @@
           hdr.mapping = THREE.EquirectangularReflectionMapping;
           originalEnv = hdr;
           if (envMode === "hdr") sceneEl.object3D.environment = hdr;
+        }, undefined, (err) => {
+          console.error("HDR load failed:", err);
         });
 
         if (sceneEl.renderer) sceneEl.renderer.setClearColor(0x000000, 0);
@@ -250,8 +252,8 @@
       const btn = document.getElementById("envToggle");
       if (!scene) return;
       if (envMode === "hdr") {
-        if (cameraRT) scene.object3D.environment = cameraRT.texture;
         envMode = "cam";
+        if (cameraRT) scene.object3D.environment = cameraRT.texture;
         if (btn) btn.innerText = "Env: CAM";
       } else if (envMode === "cam") {
         scene.object3D.environment = null;
