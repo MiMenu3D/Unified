@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 3.12</title>
+  <title>AR Over Success04-Copilot 3.11</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -141,7 +141,7 @@
         <a-scene
           xrweb
           xrconfig="cameraDirection: back; delayRun: true"
-          renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 0.95; toneMapping: ACESFilmicToneMapping;"
+          renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
           color-space="sRGB"
           embedded
           vr-mode-ui="enabled:false"
@@ -215,13 +215,13 @@
               for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
               const brightness = total / (pixels.length / 4);
               smoothed += (brightness - smoothed) * 0.08;
-              const exposure = 0.8 + (smoothed / 255) * 0.9;
+              const exposure = 0.6 + (smoothed / 255) * 0.9;
               if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
             }, 50);
           }
         }, 500);
 
-        new THREE.RGBELoader().load("HDR/terrace_sea.hdr", (hdr) => {
+        new THREE.RGBELoader().load("terrace_sea.hdr", (hdr) => {
           hdr.mapping = THREE.EquirectangularReflectionMapping;
           originalEnv = hdr;
           sceneEl.object3D.environment = hdr;
