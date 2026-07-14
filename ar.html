@@ -195,7 +195,7 @@
             cameraEnv.colorSpace = THREE.SRGBColorSpace;
 
             envCanvas = document.createElement("canvas");
-            envCanvas.width = 32; envCanvas.height = 32;
+            envCanvas.width = 64; envCanvas.height = 64;
             envTexture = new THREE.CanvasTexture(envCanvas);
             envTexture.mapping = THREE.EquirectangularReflectionMapping;
             const ctx = envCanvas.getContext("2d");
@@ -203,14 +203,14 @@
 
             envInterval = setInterval(() => {
               if (!video || video.readyState < 2) return;
-              ctx.drawImage(video, 0, 0, 32, 32);
+              ctx.drawImage(video, 0, 0, 64, 64);
               envTexture.needsUpdate = true;
               if (pmremGenerator) {
                 if (cameraRT) cameraRT.dispose();
                 cameraRT = pmremGenerator.fromEquirectangular(envTexture);
                 if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
               }
-              const pixels = ctx.getImageData(0, 0, 32, 32).data;
+              const pixels = ctx.getImageData(0, 0, 64, 64).data;
               let total = 0;
               for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
               const brightness = total / (pixels.length / 4);
