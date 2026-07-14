@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Continue 3.20</title>
+  <title>AR Over Success04-Continue 3.21</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -61,8 +61,11 @@
 
     function installBridge() {
       if (!window.XR8) return;
-      XR8.addCameraPipelineModule({
+            XR8.addCameraPipelineModule({
         name: "bridge-exporter-v5",
+        onAttach: () => {
+          if (XR8.XrController) { XR8.XrController.configure({ disableWorldSlam: false }); }
+        },
         onUpdate: ({ processCpuResult }) => {
           const reality = processCpuResult?.reality;
           if (!reality) return;
@@ -86,7 +89,8 @@
     function renderBridge() {
       const m = window.Tracking.marker;
       const s = m ? Number(m.scale || 0).toFixed(4) : "-";
-      let out = BRIDGE_VERSION + "\n\n";
+            let out = BRIDGE_VERSION + "\n";
+      out += "SLAM: " + (window.XR8 && window.XR8.XrController ? "YES" : "NO") + "\n\n";
       out += "TRACKING: " + window.Tracking.tracking + "\n";
       out += "SOURCE: " + window.Tracking.source + "\n";
       out += "EVENT: " + window.Tracking.lastEvent + "\n";
@@ -195,7 +199,7 @@
             cameraEnv.colorSpace = THREE.SRGBColorSpace;
 
             envCanvas = document.createElement("canvas");
-            envCanvas.width = 32; envCanvas.height = 32;
+            envCanvas.width = 64; envCanvas.height = 64;
             envTexture = new THREE.CanvasTexture(envCanvas);
             envTexture.mapping = THREE.EquirectangularReflectionMapping;
             const ctx = envCanvas.getContext("2d");
@@ -203,25 +207,25 @@
 
             envInterval = setInterval(() => {
               if (!video || video.readyState < 2) return;
-              ctx.drawImage(video, 0, 0, 32, 32);
+              ctx.drawImage(video, 0, 0, 64, 64);
               envTexture.needsUpdate = true;
               if (pmremGenerator) {
                 if (cameraRT) cameraRT.dispose();
                 cameraRT = pmremGenerator.fromEquirectangular(envTexture);
                 if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
               }
-              const pixels = ctx.getImageData(0, 0, 32, 32).data;
+              const pixels = ctx.getImageData(0, 0, 64, 64).data;
               let total = 0;
               for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
               const brightness = total / (pixels.length / 4);
               smoothed += (brightness - smoothed) * 0.08;
               const exposure = 0.6 + (smoothed / 255) * 0.9;
               if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
-            }, 250);
+            }, 50);
           }
         }, 500);
 
-        new THREE.RGBELoader().load("terrace_sea.hdr", (hdr) => {
+        new THREE.RGBELoader().load("HDR/terrace_sea.hdr", (hdr) => {
           hdr.mapping = THREE.EquirectangularReflectionMapping;
           originalEnv = hdr;
           sceneEl.object3D.environment = hdr;
