@@ -234,7 +234,7 @@
           }
         }, 500);
 
-                        new THREE.RGBELoader().load("HDR/terrace_sea.hdr", (hdr) => {
+                        new THREE.RGBELoader().load("terrace_sea.hdr", (hdr) => {
           hdr.mapping = THREE.EquirectangularReflectionMapping;
           originalEnv = hdr;
           applyEnvironment(sceneEl);
