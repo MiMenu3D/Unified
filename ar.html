@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>AR Over Success04-Copilot 3.42</title>
+  <title>AR Over Success04-Copilot 3.43</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -104,6 +104,19 @@
     let envInterval = null, arIntervalId = null, xrLoadPromise = null;
     let envTexture = null, envCanvas = null, video = null;
     let markerFound = false, scanOverlay = null;
+
+    function applyEnvironment(sceneEl) {
+      if (!sceneEl) return;
+      if (envMode === "cam") {
+        if (cameraRT && cameraRT.texture) {
+          sceneEl.object3D.environment = cameraRT.texture;
+        }
+      } else if (envMode === "off") {
+        sceneEl.object3D.environment = null;
+      } else if (originalEnv) {
+        sceneEl.object3D.environment = originalEnv;
+      }
+    }
 
     function loadScript({ id, src, async = false, attrs = {} }) {
       if (document.getElementById(id)) return;
@@ -208,7 +221,7 @@
               if (pmremGenerator) {
                 if (cameraRT) cameraRT.dispose();
                 cameraRT = pmremGenerator.fromEquirectangular(envTexture);
-                if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
+                applyEnvironment(sceneEl);
               }
               const pixels = ctx.getImageData(0, 0, 32, 32).data;
               let total = 0;
@@ -224,7 +237,7 @@
                         new THREE.RGBELoader().load("HDR/terrace_sea.hdr", (hdr) => {
           hdr.mapping = THREE.EquirectangularReflectionMapping;
           originalEnv = hdr;
-          if (envMode === "hdr") sceneEl.object3D.environment = hdr;
+          applyEnvironment(sceneEl);
         }, undefined, (err) => {
           console.error("HDR load failed:", err);
         });
@@ -250,15 +263,15 @@
       if (!scene) return;
       if (envMode === "hdr") {
         envMode = "cam";
-        if (cameraRT) scene.object3D.environment = cameraRT.texture;
+        applyEnvironment(scene);
         if (btn) btn.innerText = "Env: CAM";
       } else if (envMode === "cam") {
-        scene.object3D.environment = null;
         envMode = "off";
+        applyEnvironment(scene);
         if (btn) btn.innerText = "Env: OFF";
       } else {
-        scene.object3D.environment = originalEnv;
         envMode = "hdr";
+        applyEnvironment(scene);
         if (btn) btn.innerText = "Env: HDR";
       }
     };
