@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Version 3.50-HDR-CAM-OK</title>
+  <title>Version 3.51-HDR-CAM-OK</title>
   <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
   <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
   <style>
@@ -42,6 +42,12 @@
       panel.style.overflow = isMinimized ? "hidden" : "auto";
     };
     document.body.appendChild(panel);
+
+    const versionPanel = document.createElement("div");
+    versionPanel.id = "versionDebugPanel";
+    versionPanel.style.cssText = "position:fixed;left:10px;bottom:20px;background:rgba(0,0,0,0.85);color:white;padding:8px 10px;border-radius:8px;font-family:monospace;font-size:12px;line-height:1.4;z-index:999999;pointer-events:none;max-width:calc(100vw - 24px);white-space:pre-wrap;";
+    versionPanel.textContent = document.title || "No title";
+    document.body.appendChild(versionPanel);
 
     window.Tracking = { camera: null, marker: null, intrinsics: null, tracking: "waiting", source: "none", lastEvent: "none" };
     let lastPoseTs = 0;
